@@ -24,7 +24,6 @@
       --recv-bg:  #21262d;
       --radius:   8px;
       --sidebar:  260px;
-      /* Safe area insets (notch / home bar) */
       --sai-t: env(safe-area-inset-top,    0px);
       --sai-b: env(safe-area-inset-bottom, 0px);
       --sai-l: env(safe-area-inset-left,   0px);
@@ -32,13 +31,8 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* Remove 300ms tap delay on all interactive elements */
     a, button, input, label, select, textarea { touch-action: manipulation; }
-
-    /* Prevent unwanted tap highlight on mobile */
     * { -webkit-tap-highlight-color: transparent; }
-
     html { height: 100%; height: 100dvh; }
 
     body {
@@ -48,503 +42,235 @@
       color: var(--text);
       height: 100%;
       overflow: hidden;
-      /* Prevent body bounce on iOS */
       overscroll-behavior: none;
     }
 
     /* ── Shared ── */
-    input {
-      display: block;
-      width: 100%;
-      /* 16px minimum prevents iOS auto-zoom on focus */
-      font-size: 16px;
-      padding: 10px 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text);
-      outline: none;
-      transition: border-color .15s;
-      /* Prevent iOS rounding */
-      -webkit-appearance: none;
-      appearance: none;
+    input:not([type=checkbox]) {
+      display: block; width: 100%;
+      font-size: 16px; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      outline: none; transition: border-color .15s;
+      -webkit-appearance: none; appearance: none;
     }
     input:focus { border-color: var(--accent); }
-    input[readonly] { color: var(--muted); cursor: default; }
+    input[readonly] { color: var(--muted); }
 
     button.primary {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin-top: 4px;
-      background: var(--accent);
-      color: #0d1117;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      /* Min 44px touch target */
-      min-height: 44px;
-      transition: opacity .15s;
+      display: block; width: 100%; padding: 12px; margin-top: 4px;
+      background: var(--accent); color: #0d1117; border: none;
+      border-radius: var(--radius); font-size: 16px; font-weight: 600;
+      cursor: pointer; min-height: 44px; transition: opacity .15s;
     }
-    button.primary:active { opacity: .75; }
+    button.primary:active  { opacity: .75; }
     button.primary:disabled { opacity: .45; cursor: not-allowed; }
 
-    .error {
-      margin-top: 10px;
-      color: var(--error);
-      font-size: 13px;
-      text-align: center;
-      min-height: 1.2em;
-    }
+    .error { margin-top: 10px; color: var(--error); font-size: 13px; text-align: center; min-height: 1.2em; }
 
-    /* ── Auth & Unlock screens ── */
+    /* ── Auth & Unlock ── */
     #auth-screen, #unlock-screen {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
+      display: flex; align-items: center; justify-content: center; height: 100%;
       padding: var(--sai-t) var(--sai-r) var(--sai-b) var(--sai-l);
     }
-
     .auth-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 32px 24px;
-      width: 100%;
-      max-width: 360px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px 24px; width: 100%; max-width: 360px;
     }
-
-    .auth-card h1 {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -1px;
-      color: var(--accent);
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
+    .auth-card h1 { font-size: 26px; font-weight: 800; letter-spacing: -1px; color: var(--accent); text-align: center; margin-bottom: 24px; }
     .auth-card input { margin-bottom: 10px; }
-
-    .tabs {
-      display: flex;
-      gap: 4px;
-      background: var(--bg);
-      border-radius: var(--radius);
-      padding: 4px;
-      margin-bottom: 20px;
-    }
-
-    .tab {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: calc(var(--radius) - 2px);
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      min-height: 44px;
-      transition: background .1s, color .1s;
-    }
+    .tabs { display: flex; gap: 4px; background: var(--bg); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; }
+    .tab { flex: 1; padding: 10px; border: none; border-radius: calc(var(--radius) - 2px); background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; font-weight: 500; min-height: 44px; transition: background .1s, color .1s; }
     .tab.active { background: var(--surface2); color: var(--text); }
-
-    .unlock-hint {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-      margin-bottom: 18px;
-    }
-
-    .link-btn {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 13px;
-      text-decoration: underline;
-      cursor: pointer;
-      text-align: center;
-      padding: 8px;
-      min-height: 44px;
-    }
+    .unlock-hint { color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 18px; }
+    .link-btn { display: block; width: 100%; margin-top: 12px; background: none; border: none; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; text-align: center; padding: 8px; min-height: 44px; }
 
     /* ── App layout ── */
-    #app {
-      display: flex;
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-    }
+    #app { display: flex; height: 100%; position: relative; overflow: hidden; }
 
     /* ── Sidebar ── */
     .sidebar {
-      width: var(--sidebar);
-      min-width: var(--sidebar);
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      /* Safe area: left notch + top status bar */
-      padding-left: var(--sai-l);
-      padding-top: var(--sai-t);
+      width: var(--sidebar); min-width: var(--sidebar);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding-left: var(--sai-l); padding-top: var(--sai-t);
     }
+    .sidebar-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .brand { font-weight: 800; font-size: 16px; letter-spacing: -0.5px; color: var(--accent); flex: 1; }
+    #my-username { font-size: 12px; color: var(--muted); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #conn-status { font-size: 11px; color: var(--error); padding: 2px 6px; background: rgba(248,81,73,.1); border-radius: 4px; }
 
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .brand {
-      font-weight: 800;
-      font-size: 16px;
-      letter-spacing: -0.5px;
-      color: var(--accent);
-      flex: 1;
-    }
-
-    #my-username {
-      font-size: 12px;
-      color: var(--muted);
-      max-width: 90px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    #conn-status {
-      font-size: 11px;
-      color: var(--error);
-      padding: 2px 6px;
-      background: rgba(248, 81, 73, .1);
-      border-radius: 4px;
-    }
-
-    .icon-btn {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      /* 44×44 touch target */
-      width: 44px;
-      height: 44px;
-      border-radius: var(--radius);
-      font-size: 18px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: color .15s;
-    }
+    .icon-btn { background: none; border: none; color: var(--muted); cursor: pointer; width: 44px; height: 44px; border-radius: var(--radius); font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: color .15s; }
     .icon-btn:active { color: var(--error); }
-
     #btn-back { display: none; }
 
-    .user-list {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding: 8px;
-    }
+    /* Sidebar tabs */
+    .sidebar-tabs { display: flex; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .stab { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: color .1s, border-color .1s; min-height: 40px; }
+    .stab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    .no-users {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
-      padding: 24px 8px;
-    }
+    .user-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 8px; }
+    .no-users { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 8px; }
 
-    .user-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      /* 48px touch target */
-      min-height: 48px;
-    }
-    .user-item:active  { background: var(--surface2); }
-    .user-item.active  { background: var(--surface2); }
+    .user-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); cursor: pointer; min-height: 48px; }
+    .user-item.active { background: var(--surface2); }
+    .user-item:active { background: var(--surface2); }
 
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--accent);
-      flex-shrink: 0;
-      position: relative;
-      user-select: none;
-    }
+    .new-group-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; margin-bottom: 4px; background: none; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--accent); font-size: 13px; cursor: pointer; min-height: 44px; }
+    .new-group-btn:active { background: var(--surface2); }
 
-    .online-dot {
-      position: absolute;
-      bottom: 1px;
-      right: 1px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--online);
-      border: 2px solid var(--surface);
-    }
-
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: var(--accent); flex-shrink: 0; position: relative; user-select: none; }
+    .online-dot { position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; border-radius: 50%; background: var(--online); border: 2px solid var(--surface); }
     .user-name { font-size: 14px; font-weight: 500; }
 
     /* ── Chat panel ── */
-    .chat {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      background: var(--bg);
-    }
+    .chat { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+    #chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; }
 
-    #chat-placeholder {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      font-size: 15px;
-    }
-
-    #chat-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
+    #chat-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
     .chat-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px 8px 4px;
+      display: flex; align-items: center; gap: 8px;
+      padding: calc(8px + var(--sai-t)) calc(8px + var(--sai-r)) 8px 4px;
       border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-      padding-top: calc(8px + var(--sai-t));
-      padding-right: calc(12px + var(--sai-r));
+      background: var(--surface); flex-shrink: 0;
     }
-
-    #chat-avatar {
-      width: 36px;
-      height: 36px;
-      font-size: 13px;
-      flex-shrink: 0;
-    }
-
-    #chat-username { font-weight: 600; font-size: 15px; }
-
-    .status {
-      font-size: 12px;
-      color: var(--muted);
-      margin-left: 2px;
-    }
+    #chat-avatar { width: 36px; height: 36px; font-size: 13px; flex-shrink: 0; }
+    .chat-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+    #chat-username { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status { font-size: 12px; color: var(--muted); }
     .status.online { color: var(--online); }
+    .p2p-badge { font-size: 10px; font-weight: 700; letter-spacing: .5px; color: var(--online); border: 1px solid var(--online); border-radius: 4px; padding: 2px 6px; opacity: .8; white-space: nowrap; flex-shrink: 0; }
 
-    .p2p-badge {
-      margin-left: auto;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .5px;
-      color: var(--online);
-      border: 1px solid var(--online);
-      border-radius: 4px;
-      padding: 2px 6px;
-      opacity: .8;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
+    .messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; will-change: scroll-position; }
+    .empty-chat { margin: auto; color: var(--muted); font-size: 13px; }
+    .date-sep { text-align: center; font-size: 11px; color: var(--muted); margin: 10px 0 4px; user-select: none; }
 
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      /* Hardware compositing for smooth scroll */
-      will-change: scroll-position;
-    }
-
-    .empty-chat {
-      margin: auto;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .date-sep {
-      text-align: center;
-      font-size: 11px;
-      color: var(--muted);
-      margin: 10px 0 4px;
-      user-select: none;
-    }
-
-    .msg {
-      display: flex;
-      flex-direction: column;
-      max-width: 75%;
-    }
+    .msg { display: flex; flex-direction: column; max-width: 75%; }
     .msg.sent  { align-self: flex-end;   align-items: flex-end; }
     .msg.recv  { align-self: flex-start; align-items: flex-start; }
+    .msg-sender { font-size: 11px; color: var(--accent); margin-bottom: 2px; padding: 0 4px; }
+    .bubble { padding: 8px 12px; line-height: 1.55; word-break: break-word; white-space: pre-wrap; font-size: 15px; }
+    .sent .bubble { background: var(--sent-bg); border-radius: 18px 18px 4px 18px; }
+    .recv .bubble { background: var(--recv-bg); border-radius: 18px 18px 18px 4px; }
+    .msg-time { font-size: 11px; color: var(--muted); margin-top: 3px; padding: 0 4px; }
 
-    .bubble {
-      padding: 8px 12px;
-      line-height: 1.55;
-      word-break: break-word;
-      white-space: pre-wrap;
-      font-size: 15px;
-    }
-    .sent .bubble {
-      background: var(--sent-bg);
-      border-radius: 18px 18px 4px 18px;
-    }
-    .recv .bubble {
-      background: var(--recv-bg);
-      border-radius: 18px 18px 18px 4px;
-    }
+    /* File card */
+    .file-card { display: flex; align-items: center; gap: 10px; padding: 4px 0; max-width: 260px; flex-wrap: wrap; }
+    .file-img { width: 100%; max-width: 240px; border-radius: 8px; display: block; }
+    .file-icon { font-size: 28px; flex-shrink: 0; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { font-size: 11px; color: var(--muted); }
+    .file-dl { display: inline-block; margin-top: 4px; font-size: 12px; color: var(--accent); text-decoration: none; }
 
-    .msg-time {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 3px;
-      padding: 0 4px;
-    }
+    /* Poll card */
+    .poll-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; width: min(320px, 85vw); align-self: center; margin: 6px 0; }
+    .poll-question { font-weight: 600; font-size: 14px; margin-bottom: 12px; line-height: 1.4; }
+    .poll-opt { margin-bottom: 8px; }
+    .poll-opt-btn { width: 100%; text-align: left; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; cursor: pointer; min-height: 44px; transition: border-color .1s; }
+    .poll-opt-btn:active, .poll-opt.voted .poll-opt-btn { border-color: var(--accent); background: rgba(88,166,255,.08); }
+    .poll-bar { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 0 2px; }
+    .poll-fill { height: 4px; background: var(--accent); border-radius: 2px; transition: width .3s; opacity: .7; }
+    .poll-bar span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .poll-footer { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: right; }
 
+    /* ── Input area ── */
     .input-area {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      /* Safe area: home bar. --kb is set by JS visualViewport handler */
+      display: flex; flex-direction: column;
+      padding: 8px 12px;
       padding-bottom: max(10px, calc(var(--sai-b) + var(--kb, 0px) + 6px));
       padding-right: calc(12px + var(--sai-r));
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
+      border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
     }
+    .input-row { display: flex; align-items: center; gap: 6px; }
 
-    #msg-input {
-      flex: 1;
-      padding: 10px 16px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      font-size: 16px;
-      margin-bottom: 0;
-      width: auto;
-    }
+    #file-preview { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    #file-preview-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #file-preview-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    #btn-cancel-file { background: none; border: none; color: var(--error); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; }
+
+    .attach-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px 6px; font-size: 20px; height: 44px; display: flex; align-items: center; flex-shrink: 0; }
+    .attach-btn:active { color: var(--accent); }
+
+    #msg-input { flex: 1; padding: 10px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 22px; font-size: 16px; margin-bottom: 0; width: auto; }
     #msg-input:focus { border-color: var(--accent); }
 
-    #btn-send {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #0d1117;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: opacity .1s;
-    }
+    #btn-send { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #0d1117; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     #btn-send:active  { opacity: .7; }
     #btn-send:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* ── Scrollbar (desktop only) ── */
+    /* ── Group info panel ── */
+    #group-info-panel {
+      position: absolute; inset: 0; background: var(--bg); z-index: 10;
+      display: flex; flex-direction: column;
+      padding-top: var(--sai-t);
+    }
+    .gi-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .gi-header h3 { flex: 1; font-size: 16px; font-weight: 600; }
+    .gi-member { display: flex; align-items: center; gap: 10px; padding: 10px 16px; min-height: 52px; }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      padding: calc(16px + var(--sai-t)) calc(16px + var(--sai-r)) calc(16px + var(--sai-b)) calc(16px + var(--sai-l));
+    }
+    .modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 100%; max-width: 400px; max-height: 80dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .modal-card input { margin-bottom: 10px; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-btns button { flex: 1; }
+    button.secondary { padding: 11px; border: 1px solid var(--border); border-radius: var(--radius); background: none; color: var(--text); font-size: 15px; cursor: pointer; min-height: 44px; }
+    button.secondary:active { background: var(--surface2); }
+
+    .member-check { display: flex; align-items: center; gap: 10px; padding: 8px 4px; cursor: pointer; min-height: 44px; border-radius: var(--radius); }
+    .member-check:active { background: var(--surface2); }
+    .member-check input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--accent); }
+
+    .poll-opt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .modal-link { background: none; border: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 4px 0; text-align: left; }
+
+    .toggle-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; }
+    .toggle-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+    /* ── Scrollbar (desktop) ── */
     @media (hover: hover) {
       ::-webkit-scrollbar             { width: 4px; }
       ::-webkit-scrollbar-track       { background: transparent; }
       ::-webkit-scrollbar-thumb       { background: var(--border); border-radius: 2px; }
       ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-    }
-
-    /* ── Hover states only on devices that support hover ── */
-    @media (hover: hover) {
       button.primary:hover:not(:disabled) { opacity: .85; }
       .icon-btn:hover { color: var(--error); }
       .link-btn:hover { color: var(--text); }
       .user-item:hover { background: var(--surface2); }
       #btn-send:hover:not(:disabled) { opacity: .85; }
+      .poll-opt-btn:hover { border-color: var(--accent); }
     }
 
     /* ── Mobile: full-screen sliding panels ── */
     @media (max-width: 580px) {
       .sidebar, .chat {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        /* GPU-composited slide – no layout reflow */
+        position: absolute; inset: 0; width: 100%;
         will-change: transform;
         transition: transform .22s cubic-bezier(.4, 0, .2, 1);
       }
-
-      .sidebar {
-        z-index: 1;
-      }
-
-      .chat {
-        transform: translateX(100%);
-        z-index: 2;
-        background: var(--bg);
-      }
-
-      /* When chat is open: slide sidebar out, slide chat in */
-      #app.chat-open .sidebar {
-        transform: translateX(-25%);
-        pointer-events: none;
-      }
-      #app.chat-open .chat {
-        transform: translateX(0);
-      }
-
-      /* Show back button */
+      .sidebar { z-index: 1; }
+      .chat { transform: translateX(100%); z-index: 2; background: var(--bg); }
+      #app.chat-open .sidebar { transform: translateX(-25%); pointer-events: none; }
+      #app.chat-open .chat { transform: translateX(0); }
       #btn-back { display: flex; }
-
-      /* Larger user items for fat fingers */
       .user-item { min-height: 56px; padding: 10px 16px; }
       .avatar { width: 44px; height: 44px; font-size: 16px; }
       .user-name { font-size: 15px; }
-
-      /* Bigger message bubbles max-width on narrow screens */
       .msg { max-width: 85%; }
-      .bubble { font-size: 15px; }
-
-      /* Brand still visible in sidebar */
-      .brand, #my-username, .user-name { display: initial; }
-      #my-username { display: none; }
+      #group-info-panel { z-index: 11; }
     }
 
-    /* Very narrow (< 360px) tweaks */
     @media (max-width: 360px) {
       .auth-card { padding: 24px 16px; }
-      .chat-header { padding-left: 0; }
     }
 
-    /* Reduce motion for users who prefer it */
     @media (prefers-reduced-motion: reduce) {
       .sidebar, .chat, *, *::before, *::after {
         transition-duration: .01ms !important;
@@ -563,20 +289,17 @@
       <button class="tab active" id="tab-login-btn">Sign in</button>
       <button class="tab"        id="tab-reg-btn">Register</button>
     </div>
-
     <div id="tab-login-form">
       <input id="login-username" type="text"     placeholder="Username"  autocomplete="username"         spellcheck="false" autocorrect="off" autocapitalize="none">
       <input id="login-password" type="password" placeholder="Password"  autocomplete="current-password">
       <button class="primary" id="btn-login">Sign in</button>
     </div>
-
     <div id="tab-reg-form" hidden>
       <input id="reg-username"  type="text"     placeholder="Username (3–20 chars)" autocomplete="username"     spellcheck="false" autocorrect="off" autocapitalize="none">
       <input id="reg-password"  type="password" placeholder="Password (min 8 chars)" autocomplete="new-password">
       <input id="reg-password2" type="password" placeholder="Confirm password"        autocomplete="new-password">
       <button class="primary" id="btn-register">Create account</button>
     </div>
-
     <p id="auth-error" class="error" hidden></p>
   </div>
 </div>
@@ -596,6 +319,8 @@
 
 <!-- ── Main app ── -->
 <div id="app" hidden>
+
+  <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-header">
       <span class="brand">msngr</span>
@@ -603,35 +328,102 @@
       <span id="conn-status" hidden></span>
       <button class="icon-btn" id="btn-logout" title="Logout">⏻</button>
     </div>
+    <div class="sidebar-tabs">
+      <button class="stab active" id="stab-chats">Chats</button>
+      <button class="stab"        id="stab-groups">Groups</button>
+    </div>
+    <!-- Direct message list -->
     <div id="user-list" class="user-list"></div>
+    <!-- Group list -->
+    <div id="group-list" class="user-list" hidden>
+      <button class="new-group-btn" id="btn-new-group">＋ New group</button>
+    </div>
   </div>
 
+  <!-- Chat panel -->
   <div class="chat">
     <div id="chat-placeholder">← Select a conversation</div>
 
     <div id="chat-area" hidden>
+      <!-- Group info slide-over -->
+      <div id="group-info-panel" hidden>
+        <div class="gi-header">
+          <button class="icon-btn" id="btn-close-group-info" style="color:var(--accent)">←</button>
+          <h3 id="group-info-name"></h3>
+        </div>
+        <div id="group-info-members" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+      </div>
+
       <div class="chat-header">
         <button class="icon-btn" id="btn-back" title="Back">←</button>
         <div class="avatar" id="chat-avatar"></div>
-        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+        <div class="chat-title">
           <span id="chat-username"></span>
           <span id="chat-status" class="status"></span>
         </div>
         <span id="p2p-badge" class="p2p-badge" hidden title="P2P – messages bypass the server">P2P</span>
+        <button class="icon-btn" id="btn-poll"       hidden title="Create poll"   style="font-size:20px">📊</button>
+        <button class="icon-btn" id="btn-group-menu" hidden title="Group members" style="font-size:20px">⋮</button>
       </div>
+
       <div id="messages" class="messages"></div>
+
       <div class="input-area">
-        <input id="msg-input" type="text" placeholder="Message…"
-               autocomplete="off" autocorrect="off" autocapitalize="sentences"
-               inputmode="text" maxlength="4000">
-        <button id="btn-send" title="Send">↑</button>
+        <div id="file-preview" hidden>
+          <img id="file-preview-thumb" hidden alt="">
+          <span id="file-preview-name"></span>
+          <button id="btn-cancel-file" title="Remove file">×</button>
+        </div>
+        <div class="input-row">
+          <label class="attach-btn" for="file-input" title="Attach file">📎</label>
+          <input id="file-input" type="file" hidden accept="*/*">
+          <input id="msg-input" type="text" placeholder="Message…"
+                 autocomplete="off" autocorrect="off" autocapitalize="sentences"
+                 inputmode="text" maxlength="4000">
+          <button id="btn-send" title="Send">↑</button>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Group creation modal ── -->
+<div id="group-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <h2>New Group</h2>
+    <input id="gm-name" type="text" placeholder="Group name (1–50 chars)" maxlength="50" autocomplete="off">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Members:</p>
+    <div id="gm-member-list" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    <p id="gm-error" class="error" hidden></p>
+    <div class="modal-btns">
+      <button class="secondary" id="btn-cancel-group">Cancel</button>
+      <button class="primary"   id="btn-create-group" style="margin-top:0">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Poll creation modal ── -->
+<div id="poll-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <h2>Create Poll</h2>
+    <input id="poll-question" type="text" placeholder="Question (max 500 chars)" maxlength="500" autocomplete="off">
+    <div id="poll-options"></div>
+    <button class="modal-link" id="btn-add-poll-opt">＋ Add option</button>
+    <div class="toggle-row">
+      <input type="checkbox" id="poll-multi">
+      <label for="poll-multi">Allow multiple choices</label>
+    </div>
+    <p id="poll-error" class="error" hidden></p>
+    <div class="modal-btns">
+      <button class="secondary" id="btn-cancel-poll">Cancel</button>
+      <button class="primary"   id="btn-create-poll" style="margin-top:0">Create poll</button>
     </div>
   </div>
 </div>
 
 <script src="crypto.js"></script>
 <script src="peer.js"></script>
+<script src="group.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

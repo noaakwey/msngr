@@ -132,5 +132,36 @@ const Crypto = (() => {
     return Uint8Array.from(atob(b64), c => c.charCodeAt(0))
   }
 
-  return { generateKeyPair, exportPublicKey, importPublicKey, deriveSharedKey, encrypt, decrypt, wrapPrivateKey, unwrapPrivateKey }
+  // ── Group key (symmetric AES-256-GCM, shared within a group) ───────────────
+
+  /** Generate a new group key. Extractable so admin can re-encrypt for new members. */
+  async function generateGroupKey() {
+    return subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  }
+
+  /** Export group key as base64 string (to be encrypted and sent to each member). */
+  async function exportGroupKey(key) {
+    return _b64(await subtle.exportKey('raw', key))
+  }
+
+  /** Import a base64 group key. Keeps it extractable for admin re-sharing. */
+  async function importGroupKey(b64) {
+    return subtle.importKey('raw', _ub64(b64), { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
+  }
+
+  // ── Binary encrypt / decrypt (for file transfer) ────────────────────────────
+
+  /** Encrypt an ArrayBuffer. Returns { data: ArrayBuffer, iv: Uint8Array }. */
+  async function encryptBinary(arrayBuffer, key) {
+    const iv   = crypto.getRandomValues(new Uint8Array(12))
+    const data = await subtle.encrypt({ name: 'AES-GCM', iv }, key, arrayBuffer)
+    return { data, iv }
+  }
+
+  /** Decrypt ArrayBuffer. Returns ArrayBuffer. */
+  async function decryptBinary(dataBuffer, iv, key) {
+    return subtle.decrypt({ name: 'AES-GCM', iv: iv instanceof Uint8Array ? iv : new Uint8Array(iv) }, key, dataBuffer)
+  }
+
+  return { generateKeyPair, exportPublicKey, importPublicKey, deriveSharedKey, encrypt, decrypt, wrapPrivateKey, unwrapPrivateKey, generateGroupKey, exportGroupKey, importGroupKey, encryptBinary, decryptBinary }
 })()
