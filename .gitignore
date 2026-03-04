@@ -1,7 +1,6 @@
 node_modules/
+data/
 .env
-server/msngr.db
-server/uploads/*
-!server/uploads/.gitkeep
-client/dist/
-*.log
+*.db
+*.db-shm
+*.db-wal

@@ -1,55 +1,64 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+import Database from 'better-sqlite3'
+import { mkdirSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
-const db = new Database(path.join(__dirname, 'msngr.db'));
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const dataDir = join(__dirname, '../data')
+mkdirSync(dataDir, { recursive: true })
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new Database(join(dataDir, 'msngr.db'))
+
+// Performance and integrity pragmas
+db.pragma('journal_mode = WAL')
+db.pragma('foreign_keys = ON')
+db.pragma('synchronous = NORMAL')
+db.pragma('temp_store = MEMORY')
+db.pragma('mmap_size = 268435456') // 256 MB
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    telegram_id INTEGER UNIQUE NOT NULL,
-    username TEXT,
-    first_name TEXT NOT NULL,
-    last_name TEXT,
-    photo_url TEXT,
-    created_at INTEGER DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS chats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    type TEXT NOT NULL DEFAULT 'private',
-    created_by INTEGER REFERENCES users(id),
-    created_at INTEGER DEFAULT (unixepoch())
-  );
-
-  CREATE TABLE IF NOT EXISTS chat_members (
-    chat_id INTEGER REFERENCES chats(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    role TEXT NOT NULL DEFAULT 'member',
-    last_read_message_id INTEGER DEFAULT 0,
-    joined_at INTEGER DEFAULT (unixepoch()),
-    PRIMARY KEY (chat_id, user_id)
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    UNIQUE NOT NULL,
+    password_hash TEXT    NOT NULL,
+    public_key    TEXT    NOT NULL,
+    created_at    INTEGER DEFAULT (unixepoch())
   );
 
   CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-    sender_id INTEGER NOT NULL REFERENCES users(id),
-    type TEXT NOT NULL DEFAULT 'text',
-    content TEXT,
-    file_url TEXT,
-    file_name TEXT,
-    reply_to INTEGER REFERENCES messages(id),
-    edited_at INTEGER,
-    deleted INTEGER DEFAULT 0,
-    created_at INTEGER DEFAULT (unixepoch())
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ciphertext   TEXT    NOT NULL,
+    iv           TEXT    NOT NULL,
+    created_at   INTEGER DEFAULT (unixepoch())
   );
 
-  CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
-  CREATE INDEX IF NOT EXISTS idx_members_user ON chat_members(user_id);
-`);
+  CREATE INDEX IF NOT EXISTS idx_msg_pair
+    ON messages(min(sender_id, recipient_id), max(sender_id, recipient_id), created_at);
+`)
 
-module.exports = db;
+// Prepared statements (reused for performance)
+export const stmts = {
+  insertUser:    db.prepare('INSERT INTO users (username, password_hash, public_key) VALUES (?, ?, ?)'),
+  findUser:      db.prepare('SELECT id, username, password_hash, public_key FROM users WHERE username = ?'),
+  updatePubKey:  db.prepare('UPDATE users SET public_key = ? WHERE id = ?'),
+  listUsers:     db.prepare('SELECT username FROM users WHERE id != ? ORDER BY username'),
+  userPubKey:    db.prepare('SELECT public_key FROM users WHERE username = ?'),
+
+  insertMsg:     db.prepare(
+    'INSERT INTO messages (sender_id, recipient_id, ciphertext, iv) VALUES (?, ?, ?, ?)'
+  ),
+  conversation:  db.prepare(`
+    SELECT m.id, u.username AS sender, m.ciphertext, m.iv,
+           m.created_at AS createdAt
+    FROM   messages m
+    JOIN   users u ON u.id = m.sender_id
+    WHERE  (m.sender_id = ? AND m.recipient_id = ?)
+        OR (m.sender_id = ? AND m.recipient_id = ?)
+    ORDER  BY m.created_at ASC, m.id ASC
+    LIMIT  200
+  `),
+}
+
+export default db

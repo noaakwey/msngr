@@ -1,14 +1,499 @@
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Msngr</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script async src="https://telegram.org/js/telegram-widget.js?22"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Secure, lightweight E2E-encrypted messenger">
+  <title>msngr</title>
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #21262d;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #58a6ff;
+      --online:   #3fb950;
+      --error:    #f85149;
+      --sent-bg:  #1c3a5e;
+      --recv-bg:  #21262d;
+      --radius:   8px;
+      --sidebar:  260px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── Shared ── */
+    input {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: var(--accent); }
+    input[readonly] { color: var(--muted); cursor: default; }
+
+    button.primary {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    button.primary:hover:not(:disabled) { opacity: .85; }
+    button.primary:disabled { opacity: .45; cursor: not-allowed; }
+
+    .error {
+      margin-top: 10px;
+      color: var(--error);
+      font-size: 13px;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    /* ── Auth & Unlock screens ── */
+    #auth-screen, #unlock-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .auth-card h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .auth-card input { margin-bottom: 10px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background .1s, color .1s;
+    }
+    .tab.active { background: var(--surface2); color: var(--text); }
+
+    .unlock-hint {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .link-btn {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+      text-align: center;
+      padding: 0;
+    }
+    .link-btn:hover { color: var(--text); }
+
+    /* ── App layout ── */
+    #app {
+      display: flex;
+      height: 100dvh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar);
+      min-width: var(--sidebar);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      flex: 1;
+    }
+
+    #my-username {
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #conn-status {
+      font-size: 11px;
+      color: var(--error);
+      padding: 2px 6px;
+      background: rgba(248, 81, 73, .1);
+      border-radius: 4px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 15px;
+      line-height: 1;
+      transition: color .15s;
+    }
+    .icon-btn:hover { color: var(--error); }
+
+    .user-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .no-users {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding: 24px 8px;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .user-item:hover  { background: var(--surface2); }
+    .user-item.active { background: var(--surface2); }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+      flex-shrink: 0;
+      position: relative;
+      user-select: none;
+    }
+
+    .online-dot {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--online);
+      border: 2px solid var(--surface);
+    }
+
+    .user-name { font-size: 14px; font-weight: 500; }
+
+    /* ── Chat panel ── */
+    .chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg);
+    }
+
+    #chat-placeholder {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    #chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    #chat-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
+
+    #chat-username { font-weight: 600; font-size: 15px; }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 2px;
+    }
+    .status.online { color: var(--online); }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .empty-chat {
+      margin: auto;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .date-sep {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin: 10px 0 4px;
+      user-select: none;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 68%;
+    }
+    .msg.sent  { align-self: flex-end;   align-items: flex-end; }
+    .msg.recv  { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 8px 12px;
+      line-height: 1.55;
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+    .sent .bubble {
+      background: var(--sent-bg);
+      border-radius: 14px 14px 4px 14px;
+    }
+    .recv .bubble {
+      background: var(--recv-bg);
+      border-radius: 14px 14px 14px 4px;
+    }
+
+    .msg-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+
+    .input-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    #msg-input {
+      flex: 1;
+      padding: 10px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 14px;
+      margin-bottom: 0;
+      width: auto;
+    }
+    #msg-input:focus { border-color: var(--accent); }
+
+    #btn-send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    #btn-send:hover:not(:disabled) { opacity: .85; }
+    #btn-send:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar             { width: 4px; }
+    ::-webkit-scrollbar-track       { background: transparent; }
+    ::-webkit-scrollbar-thumb       { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Mobile ── */
+    @media (max-width: 580px) {
+      :root { --sidebar: 60px; }
+      .brand, #my-username, .user-name, #conn-status { display: none; }
+      .user-item { justify-content: center; padding: 10px 4px; }
+      .sidebar-header { justify-content: center; gap: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth screen ── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>msngr</h1>
+    <div class="tabs">
+      <button class="tab active" id="tab-login-btn">Sign in</button>
+      <button class="tab"        id="tab-reg-btn">Register</button>
+    </div>
+
+    <div id="tab-login-form">
+      <input id="login-username" type="text"     placeholder="Username"  autocomplete="username"         spellcheck="false">
+      <input id="login-password" type="password" placeholder="Password"  autocomplete="current-password">
+      <button class="primary" id="btn-login">Sign in</button>
+    </div>
+
+    <div id="tab-reg-form" hidden>
+      <input id="reg-username"  type="text"     placeholder="Username (3–20 chars)" autocomplete="username"     spellcheck="false">
+      <input id="reg-password"  type="password" placeholder="Password (min 8 chars)" autocomplete="new-password">
+      <input id="reg-password2" type="password" placeholder="Confirm password"        autocomplete="new-password">
+      <button class="primary" id="btn-register">Create account</button>
+    </div>
+
+    <p id="auth-error" class="error" hidden></p>
+  </div>
+</div>
+
+<!-- ── Unlock screen ── -->
+<div id="unlock-screen" hidden>
+  <div class="auth-card">
+    <h1>msngr</h1>
+    <p class="unlock-hint">Enter your password to unlock</p>
+    <input id="unlock-username" type="text" readonly>
+    <input id="unlock-password" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="primary" id="btn-unlock">Unlock</button>
+    <button class="link-btn"   id="btn-switch-user">Switch user</button>
+    <p id="unlock-error" class="error" hidden></p>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
+<div id="app" hidden>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="brand">msngr</span>
+      <span id="my-username"></span>
+      <span id="conn-status" hidden></span>
+      <button class="icon-btn" id="btn-logout" title="Logout">⏻</button>
+    </div>
+    <div id="user-list" class="user-list"></div>
+  </div>
+
+  <div class="chat">
+    <div id="chat-placeholder">← Select a conversation</div>
+
+    <div id="chat-area" hidden>
+      <div class="chat-header">
+        <div class="avatar" id="chat-avatar"></div>
+        <span id="chat-username"></span>
+        <span id="chat-status" class="status"></span>
+      </div>
+      <div id="messages" class="messages"></div>
+      <div class="input-area">
+        <input id="msg-input" type="text" placeholder="Message…" autocomplete="off" maxlength="4000">
+        <button id="btn-send" title="Send">↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="crypto.js"></script>
+<script src="app.js"></script>
+</body>
 </html>
