@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Secure, lightweight E2E-encrypted messenger">
   <title>msngr</title>
   <style>
@@ -20,31 +24,50 @@
       --recv-bg:  #21262d;
       --radius:   8px;
       --sidebar:  260px;
+      /* Safe area insets (notch / home bar) */
+      --sai-t: env(safe-area-inset-top,    0px);
+      --sai-b: env(safe-area-inset-bottom, 0px);
+      --sai-l: env(safe-area-inset-left,   0px);
+      --sai-r: env(safe-area-inset-right,  0px);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Remove 300ms tap delay on all interactive elements */
+    a, button, input, label, select, textarea { touch-action: manipulation; }
+
+    /* Prevent unwanted tap highlight on mobile */
+    * { -webkit-tap-highlight-color: transparent; }
+
+    html { height: 100%; height: 100dvh; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
       font-size: 14px;
       background: var(--bg);
       color: var(--text);
-      height: 100dvh;
+      height: 100%;
       overflow: hidden;
+      /* Prevent body bounce on iOS */
+      overscroll-behavior: none;
     }
 
     /* ── Shared ── */
     input {
       display: block;
       width: 100%;
+      /* 16px minimum prevents iOS auto-zoom on focus */
+      font-size: 16px;
       padding: 10px 12px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
-      font-size: 14px;
       outline: none;
       transition: border-color .15s;
+      /* Prevent iOS rounding */
+      -webkit-appearance: none;
+      appearance: none;
     }
     input:focus { border-color: var(--accent); }
     input[readonly] { color: var(--muted); cursor: default; }
@@ -52,18 +75,20 @@
     button.primary {
       display: block;
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       margin-top: 4px;
       background: var(--accent);
       color: #0d1117;
       border: none;
       border-radius: var(--radius);
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       cursor: pointer;
+      /* Min 44px touch target */
+      min-height: 44px;
       transition: opacity .15s;
     }
-    button.primary:hover:not(:disabled) { opacity: .85; }
+    button.primary:active { opacity: .75; }
     button.primary:disabled { opacity: .45; cursor: not-allowed; }
 
     .error {
@@ -79,14 +104,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100dvh;
+      height: 100%;
+      padding: var(--sai-t) var(--sai-r) var(--sai-b) var(--sai-l);
     }
 
     .auth-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 32px;
+      padding: 32px 24px;
       width: 100%;
       max-width: 360px;
     }
@@ -113,14 +139,15 @@
 
     .tab {
       flex: 1;
-      padding: 8px;
+      padding: 10px;
       border: none;
       border-radius: calc(var(--radius) - 2px);
       background: transparent;
       color: var(--muted);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
+      min-height: 44px;
       transition: background .1s, color .1s;
     }
     .tab.active { background: var(--surface2); color: var(--text); }
@@ -143,14 +170,16 @@
       text-decoration: underline;
       cursor: pointer;
       text-align: center;
-      padding: 0;
+      padding: 8px;
+      min-height: 44px;
     }
-    .link-btn:hover { color: var(--text); }
 
     /* ── App layout ── */
     #app {
       display: flex;
-      height: 100dvh;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
     }
 
     /* ── Sidebar ── */
@@ -161,6 +190,9 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      /* Safe area: left notch + top status bar */
+      padding-left: var(--sai-l);
+      padding-top: var(--sai-t);
     }
 
     .sidebar-header {
@@ -201,17 +233,27 @@
       border: none;
       color: var(--muted);
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
-      font-size: 15px;
+      /* 44×44 touch target */
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      font-size: 18px;
       line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
       transition: color .15s;
     }
-    .icon-btn:hover { color: var(--error); }
+    .icon-btn:active { color: var(--error); }
+
+    #btn-back { display: none; }
 
     .user-list {
       flex: 1;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       padding: 8px;
     }
 
@@ -226,24 +268,25 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 9px 12px;
+      padding: 10px 12px;
       border-radius: var(--radius);
       cursor: pointer;
-      transition: background .1s;
+      /* 48px touch target */
+      min-height: 48px;
     }
-    .user-item:hover  { background: var(--surface2); }
-    .user-item.active { background: var(--surface2); }
+    .user-item:active  { background: var(--surface2); }
+    .user-item.active  { background: var(--surface2); }
 
     .avatar {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: var(--surface2);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 15px;
       color: var(--accent);
       flex-shrink: 0;
       position: relative;
@@ -254,8 +297,8 @@
       position: absolute;
       bottom: 1px;
       right: 1px;
-      width: 9px;
-      height: 9px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: var(--online);
       border: 2px solid var(--surface);
@@ -292,16 +335,19 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 12px 20px;
+      padding: 8px 12px 8px 4px;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
       flex-shrink: 0;
+      padding-top: calc(8px + var(--sai-t));
+      padding-right: calc(12px + var(--sai-r));
     }
 
     #chat-avatar {
-      width: 32px;
-      height: 32px;
-      font-size: 12px;
+      width: 36px;
+      height: 36px;
+      font-size: 13px;
+      flex-shrink: 0;
     }
 
     #chat-username { font-weight: 600; font-size: 15px; }
@@ -321,17 +367,23 @@
       color: var(--online);
       border: 1px solid var(--online);
       border-radius: 4px;
-      padding: 1px 6px;
+      padding: 2px 6px;
       opacity: .8;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .messages {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: 12px 16px;
       display: flex;
       flex-direction: column;
       gap: 4px;
+      /* Hardware compositing for smooth scroll */
+      will-change: scroll-position;
     }
 
     .empty-chat {
@@ -351,7 +403,7 @@
     .msg {
       display: flex;
       flex-direction: column;
-      max-width: 68%;
+      max-width: 75%;
     }
     .msg.sent  { align-self: flex-end;   align-items: flex-end; }
     .msg.recv  { align-self: flex-start; align-items: flex-start; }
@@ -361,15 +413,15 @@
       line-height: 1.55;
       word-break: break-word;
       white-space: pre-wrap;
-      font-size: 14px;
+      font-size: 15px;
     }
     .sent .bubble {
       background: var(--sent-bg);
-      border-radius: 14px 14px 4px 14px;
+      border-radius: 18px 18px 4px 18px;
     }
     .recv .bubble {
       background: var(--recv-bg);
-      border-radius: 14px 14px 14px 4px;
+      border-radius: 18px 18px 18px 4px;
     }
 
     .msg-time {
@@ -383,7 +435,10 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 12px 16px;
+      padding: 10px 12px;
+      /* Safe area: home bar. --kb is set by JS visualViewport handler */
+      padding-bottom: max(10px, calc(var(--sai-b) + var(--kb, 0px) + 6px));
+      padding-right: calc(12px + var(--sai-r));
       border-top: 1px solid var(--border);
       background: var(--surface);
       flex-shrink: 0;
@@ -394,43 +449,107 @@
       padding: 10px 16px;
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      font-size: 14px;
+      border-radius: 22px;
+      font-size: 16px;
       margin-bottom: 0;
       width: auto;
     }
     #msg-input:focus { border-color: var(--accent); }
 
     #btn-send {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: var(--accent);
       color: #0d1117;
       border: none;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: opacity .15s;
+      transition: opacity .1s;
     }
-    #btn-send:hover:not(:disabled) { opacity: .85; }
+    #btn-send:active  { opacity: .7; }
     #btn-send:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar             { width: 4px; }
-    ::-webkit-scrollbar-track       { background: transparent; }
-    ::-webkit-scrollbar-thumb       { background: var(--border); border-radius: 2px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    /* ── Scrollbar (desktop only) ── */
+    @media (hover: hover) {
+      ::-webkit-scrollbar             { width: 4px; }
+      ::-webkit-scrollbar-track       { background: transparent; }
+      ::-webkit-scrollbar-thumb       { background: var(--border); border-radius: 2px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    }
 
-    /* ── Mobile ── */
+    /* ── Hover states only on devices that support hover ── */
+    @media (hover: hover) {
+      button.primary:hover:not(:disabled) { opacity: .85; }
+      .icon-btn:hover { color: var(--error); }
+      .link-btn:hover { color: var(--text); }
+      .user-item:hover { background: var(--surface2); }
+      #btn-send:hover:not(:disabled) { opacity: .85; }
+    }
+
+    /* ── Mobile: full-screen sliding panels ── */
     @media (max-width: 580px) {
-      :root { --sidebar: 60px; }
-      .brand, #my-username, .user-name, #conn-status { display: none; }
-      .user-item { justify-content: center; padding: 10px 4px; }
-      .sidebar-header { justify-content: center; gap: 0; }
+      .sidebar, .chat {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        /* GPU-composited slide – no layout reflow */
+        will-change: transform;
+        transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+      }
+
+      .sidebar {
+        z-index: 1;
+      }
+
+      .chat {
+        transform: translateX(100%);
+        z-index: 2;
+        background: var(--bg);
+      }
+
+      /* When chat is open: slide sidebar out, slide chat in */
+      #app.chat-open .sidebar {
+        transform: translateX(-25%);
+        pointer-events: none;
+      }
+      #app.chat-open .chat {
+        transform: translateX(0);
+      }
+
+      /* Show back button */
+      #btn-back { display: flex; }
+
+      /* Larger user items for fat fingers */
+      .user-item { min-height: 56px; padding: 10px 16px; }
+      .avatar { width: 44px; height: 44px; font-size: 16px; }
+      .user-name { font-size: 15px; }
+
+      /* Bigger message bubbles max-width on narrow screens */
+      .msg { max-width: 85%; }
+      .bubble { font-size: 15px; }
+
+      /* Brand still visible in sidebar */
+      .brand, #my-username, .user-name { display: initial; }
+      #my-username { display: none; }
+    }
+
+    /* Very narrow (< 360px) tweaks */
+    @media (max-width: 360px) {
+      .auth-card { padding: 24px 16px; }
+      .chat-header { padding-left: 0; }
+    }
+
+    /* Reduce motion for users who prefer it */
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar, .chat, *, *::before, *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+      }
     }
   </style>
 </head>
@@ -446,13 +565,13 @@
     </div>
 
     <div id="tab-login-form">
-      <input id="login-username" type="text"     placeholder="Username"  autocomplete="username"         spellcheck="false">
+      <input id="login-username" type="text"     placeholder="Username"  autocomplete="username"         spellcheck="false" autocorrect="off" autocapitalize="none">
       <input id="login-password" type="password" placeholder="Password"  autocomplete="current-password">
       <button class="primary" id="btn-login">Sign in</button>
     </div>
 
     <div id="tab-reg-form" hidden>
-      <input id="reg-username"  type="text"     placeholder="Username (3–20 chars)" autocomplete="username"     spellcheck="false">
+      <input id="reg-username"  type="text"     placeholder="Username (3–20 chars)" autocomplete="username"     spellcheck="false" autocorrect="off" autocapitalize="none">
       <input id="reg-password"  type="password" placeholder="Password (min 8 chars)" autocomplete="new-password">
       <input id="reg-password2" type="password" placeholder="Confirm password"        autocomplete="new-password">
       <button class="primary" id="btn-register">Create account</button>
@@ -492,14 +611,19 @@
 
     <div id="chat-area" hidden>
       <div class="chat-header">
+        <button class="icon-btn" id="btn-back" title="Back">←</button>
         <div class="avatar" id="chat-avatar"></div>
-        <span id="chat-username"></span>
-        <span id="chat-status" class="status"></span>
+        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+          <span id="chat-username"></span>
+          <span id="chat-status" class="status"></span>
+        </div>
         <span id="p2p-badge" class="p2p-badge" hidden title="P2P – messages bypass the server">P2P</span>
       </div>
       <div id="messages" class="messages"></div>
       <div class="input-area">
-        <input id="msg-input" type="text" placeholder="Message…" autocomplete="off" maxlength="4000">
+        <input id="msg-input" type="text" placeholder="Message…"
+               autocomplete="off" autocorrect="off" autocapitalize="sentences"
+               inputmode="text" maxlength="4000">
         <button id="btn-send" title="Send">↑</button>
       </div>
     </div>

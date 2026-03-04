@@ -282,8 +282,9 @@ async function openChat(username) {
   // Update header
   $('chat-username').textContent = username
   $('chat-avatar').textContent   = username[0].toUpperCase()
-  $('chat-status').textContent   = S.onlineUsers.has(username) ? '● online' : ''
-  $('chat-status').className     = 'status' + (S.onlineUsers.has(username) ? ' online' : '')
+  const online = S.onlineUsers.has(username)
+  $('chat-status').textContent   = online ? '● online' : ''
+  $('chat-status').className     = 'status' + (online ? ' online' : '')
 
   hide('chat-placeholder')
   const area = $('chat-area')
@@ -296,8 +297,11 @@ async function openChat(username) {
   renderMessages()
   $('msg-input').focus()
 
+  // Mobile: slide to chat panel
+  $('app').classList.add('chat-open')
+
   // Initiate P2P if peer is online and no channel open yet
-  if (S.onlineUsers.has(username) && !Peer.isOpen(username)) {
+  if (online && !Peer.isOpen(username)) {
     Peer.connect(username).catch(() => {/* fallback to server silently */})
   }
 }
@@ -319,32 +323,34 @@ async function loadHistory(username) {
 
 function renderMessages() {
   const container = $('messages')
-  container.innerHTML = ''
-
   const msgs = S.messages.get(S.currentChat) ?? []
+
+  // Single DOM write via DocumentFragment – avoids repeated reflows
+  const frag = document.createDocumentFragment()
 
   if (!msgs.length) {
     const p = el('p')
     p.className = 'empty-chat'
     p.textContent = 'No messages yet – say hello!'
-    container.appendChild(p)
-    scrollBottom()
-    return
+    frag.appendChild(p)
+  } else {
+    let lastDate = null
+    for (const msg of msgs) {
+      const date = new Date(msg.createdAt * 1000)
+      const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      if (dateStr !== lastDate) {
+        lastDate = dateStr
+        const sep = el('div')
+        sep.className = 'date-sep'
+        sep.textContent = dateStr
+        frag.appendChild(sep)
+      }
+      frag.appendChild(makeBubble(msg))
+    }
   }
 
-  let lastDate = null
-  for (const msg of msgs) {
-    const date = new Date(msg.createdAt * 1000)
-    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    if (dateStr !== lastDate) {
-      lastDate = dateStr
-      const sep = el('div')
-      sep.className = 'date-sep'
-      sep.textContent = dateStr
-      container.appendChild(sep)
-    }
-    container.appendChild(makeBubble(msg))
-  }
+  container.innerHTML = ''
+  container.appendChild(frag)
   scrollBottom()
 }
 
@@ -371,7 +377,8 @@ function makeBubble(msg) {
 
 function scrollBottom() {
   const msgs = $('messages')
-  msgs.scrollTop = msgs.scrollHeight
+  // requestAnimationFrame ensures layout is complete before measuring
+  requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight })
 }
 
 async function sendMessage() {
@@ -528,6 +535,25 @@ function _pushMessage(peer, entry) {
   }
 }
 
+// ── visualViewport: keep input above soft keyboard on iOS/Android ──────────────
+function setupViewport() {
+  if (!window.visualViewport) return
+  let ticking = false
+  const update = () => {
+    if (ticking) return
+    ticking = true
+    requestAnimationFrame(() => {
+      ticking = false
+      const kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop)
+      document.documentElement.style.setProperty('--kb', kb + 'px')
+      // Scroll to bottom when keyboard opens so last message stays visible
+      if (kb > 50 && S.currentChat) scrollBottom()
+    })
+  }
+  window.visualViewport.addEventListener('resize', update, { passive: true })
+  window.visualViewport.addEventListener('scroll', update, { passive: true })
+}
+
 // ── Startup ────────────────────────────────────────────────────────────────────
 async function init() {
   const token    = localStorage.getItem(LS_TOKEN)
@@ -598,5 +624,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   })
 
+  // Mobile back button
+  $('btn-back').addEventListener('click', () => {
+    $('app').classList.remove('chat-open')
+    S.currentChat = null
+  })
+
+  setupViewport()
   init()
 })
