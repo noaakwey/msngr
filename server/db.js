@@ -107,6 +107,7 @@ db.exec(`
 `)
 
 export const stmts = {
+  db,  // expose db instance for ad-hoc transactions in index.js
   // ── Users ──────────────────────────────────────────────────────────────────
   insertUser:    db.prepare('INSERT INTO users (username, password_hash, public_key) VALUES (?, ?, ?)'),
   findUser:      db.prepare('SELECT id, username, password_hash, public_key FROM users WHERE username = ?'),

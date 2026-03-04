@@ -228,6 +228,8 @@ function doLogout() {
   clearTimeout(S.wsTimer)
   localStorage.removeItem(LS_TOKEN)
   sessionStorage.removeItem(SS_PASS)
+  // Evict all cached group keys so they can't be read after logout
+  for (const g of S.groups) GroupMgr.evict(g.id)
   Object.assign(S, {
     username: null, token: null, privateKey: null,
     currentChat: null, currentGroup: null,
@@ -921,12 +923,12 @@ function connectWS() {
   if (S.ws?.readyState === 0 || S.ws?.readyState === 1) return
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const ws = new WebSocket(`${proto}://${location.host}/ws?token=${S.token}`)
+  const ws = new WebSocket(`${proto}://${location.host}/ws`)
   S.ws = ws
 
   ws.addEventListener('open', () => {
-    S.wsRetries = 0
-    updateConnStatus(true)
+    // Send auth token as first message (not in URL – avoids server logs)
+    ws.send(JSON.stringify({ type: 'auth', token: S.token }))
   })
 
   ws.addEventListener('message', async ({ data }) => {
@@ -964,6 +966,12 @@ function updateConnStatus(online) {
 
 async function handleWSMessage(msg) {
   switch (msg.type) {
+    case 'auth-ok': {
+      S.wsRetries = 0
+      updateConnStatus(true)
+      break
+    }
+
     case 'online': {
       S.onlineUsers = new Set(msg.users)
       renderUserList()

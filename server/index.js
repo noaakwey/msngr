@@ -39,6 +39,24 @@ await app.register(staticPlugin, {
   prefix: '/',
 })
 
+// ─── Security headers ─────────────────────────────────────────────────────────
+app.addHook('onSend', async (req, reply) => {
+  reply.header('X-Content-Type-Options', 'nosniff')
+  reply.header('X-Frame-Options', 'DENY')
+  reply.header('Referrer-Policy', 'no-referrer')
+  // CSP: allow same-origin resources + WebRTC STUN (uses ws/wss same origin)
+  reply.header(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' wss: ws:; media-src 'self' blob:; worker-src 'none'; object-src 'none'; base-uri 'self'",
+  )
+  // CORS: same-origin only (tighten if you add a CDN)
+  const origin = req.headers.origin
+  if (origin && new URL(origin).host === req.headers.host) {
+    reply.header('Access-Control-Allow-Origin', origin)
+    reply.header('Vary', 'Origin')
+  }
+})
+
 // ─── Rate limiter ─────────────────────────────────────────────────────────────
 const rl = new Map()
 function rateLimit(key, max, windowMs) {
@@ -397,33 +415,74 @@ app.delete('/api/polls/:id/vote', async (req, reply) => {
   reply.send({ ok: true, votes })
 })
 
-// ─── WebSocket /ws?token=… ───────────────────────────────────────────────────
+// ─── WebSocket /ws  (token sent in first JSON message, not in URL) ───────────
 app.register(async (scope) => {
-  scope.get('/ws', { websocket: true }, (socket, req) => {
-    const payload = verifyToken(req.query?.token)
-    if (!payload) {
-      socket.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }))
-      socket.close(4001, 'Unauthorized')
-      return
+  scope.get('/ws', { websocket: true }, (socket) => {
+    // Auth handshake: wait for first message { type:'auth', token }
+    let userId   = null
+    let username = null
+    let authed   = false
+
+    // Per-socket rate limit counters
+    const WS_RL_WINDOW   = 10_000   // 10 s window
+    const WS_RL_MAX_MSG  = 60       // max messages per window
+    const WS_RL_MAX_FILE = 4        // max file messages per window
+    let rlCount     = 0
+    let rlFileCount = 0
+    let rlResetAt   = Date.now() + WS_RL_WINDOW
+
+    function wsRateOk(isFile = false) {
+      const now = Date.now()
+      if (now > rlResetAt) { rlCount = 0; rlFileCount = 0; rlResetAt = now + WS_RL_WINDOW }
+      if (++rlCount > WS_RL_MAX_MSG) return false
+      if (isFile && ++rlFileCount > WS_RL_MAX_FILE) return false
+      return true
     }
 
-    const { id: userId, username } = payload
-    socket._username = username
-
-    const existing = connections.get(userId)
-    if (existing?.readyState === 1) {
-      existing.send(JSON.stringify({ type: 'info', message: 'Session replaced' }))
-      existing.close(4000, 'Replaced')
-    }
-    connections.set(userId, socket)
-    broadcastOnlineStatus()
+    // Auth timeout: close if no auth within 5 s
+    const authTimeout = setTimeout(() => {
+      if (!authed) socket.close(4001, 'Auth timeout')
+    }, 5_000)
 
     socket.on('message', (rawData) => {
       let msg
       try { msg = JSON.parse(rawData.toString()) } catch { return }
 
+      // ── Auth handshake ────────────────────────────────────────────────────
+      if (!authed) {
+        if (msg.type !== 'auth' || typeof msg.token !== 'string') {
+          socket.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }))
+          socket.close(4001, 'Unauthorized')
+          return
+        }
+        const payload = verifyToken(msg.token)
+        if (!payload) {
+          socket.send(JSON.stringify({ type: 'error', message: 'Unauthorized' }))
+          socket.close(4001, 'Unauthorized')
+          return
+        }
+        clearTimeout(authTimeout)
+        authed   = true
+        userId   = payload.id
+        username = payload.username
+        socket._username = username
+
+        const existing = connections.get(userId)
+        if (existing?.readyState === 1) {
+          existing.send(JSON.stringify({ type: 'info', message: 'Session replaced' }))
+          existing.close(4000, 'Replaced')
+        }
+        connections.set(userId, socket)
+        socket.send(JSON.stringify({ type: 'auth-ok' }))
+        broadcastOnlineStatus()
+        return
+      }
+
+      // ── Authenticated messages ────────────────────────────────────────────
+
       // ── P2P signaling relay ───────────────────────────────────────────────
       if (msg.type === 'signal') {
+        if (!wsRateOk()) return
         const { to, payload } = msg
         if (!to || typeof to !== 'string' || !payload || typeof payload !== 'object') return
         const recipient = stmts.findUser.get(to)
@@ -435,9 +494,11 @@ app.register(async (scope) => {
 
       // ── 1-1 message (offline fallback) ────────────────────────────────────
       if (msg.type === 'message') {
+        const isFile = msg.msgType === 'file'
+        if (!wsRateOk(isFile)) return
         const { to, ciphertext, iv, msgType = 'text', meta } = msg
         if (!to || typeof to !== 'string') return
-        const maxLen = msgType === 'file' ? 5_500_000 : 131_072
+        const maxLen = isFile ? 5_500_000 : 131_072
         if (!validCiphertext(ciphertext, maxLen) || !validIv(iv)) return
         const metaStr = meta && typeof meta === 'object' ? JSON.stringify(meta) : null
 
@@ -458,14 +519,21 @@ app.register(async (scope) => {
 
       // ── Group message ─────────────────────────────────────────────────────
       if (msg.type === 'group-message') {
+        const isFile = msg.msgType === 'file'
+        if (!wsRateOk(isFile)) return
         const { groupId, ciphertext, iv, msgType = 'text', meta } = msg
         if (typeof groupId !== 'number') return
-        const maxLen = msgType === 'file' ? 5_500_000 : 131_072
+        const maxLen = isFile ? 5_500_000 : 131_072
         if (!validCiphertext(ciphertext, maxLen) || !validIv(iv)) return
-        if (!stmts.isMember.get(groupId, userId)) return
         const metaStr = meta && typeof meta === 'object' ? JSON.stringify(meta) : null
 
-        const row = stmts.insertGroupMsg.get(groupId, userId, msgType, ciphertext, iv, metaStr)
+        // Atomic: membership check + insert in single transaction
+        const row = stmts.db.transaction(() => {
+          if (!stmts.isMember.get(groupId, userId)) return null
+          return stmts.insertGroupMsg.get(groupId, userId, msgType, ciphertext, iv, metaStr)
+        })()
+        if (!row) return
+
         const envelope = {
           type: 'group-message', id: row.id, groupId, from: username,
           msgType, ciphertext, iv, meta: meta ?? null, createdAt: row.created_at,
@@ -476,8 +544,11 @@ app.register(async (scope) => {
       }
     })
 
-    socket.on('close', () => { connections.delete(userId); broadcastOnlineStatus() })
-    socket.on('error', () => connections.delete(userId))
+    socket.on('close', () => {
+      clearTimeout(authTimeout)
+      if (userId) { connections.delete(userId); broadcastOnlineStatus() }
+    })
+    socket.on('error', () => { if (userId) connections.delete(userId) })
   })
 })
 
