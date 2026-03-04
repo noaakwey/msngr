@@ -230,6 +230,23 @@ app.register(async (scope) => {
       let msg
       try { msg = JSON.parse(rawData.toString()) } catch { return }
 
+      // ── P2P signaling relay (server never inspects payload) ──────────────
+      if (msg.type === 'signal') {
+        const { to, payload } = msg
+        if (!to || typeof to !== 'string') return
+        if (!payload || typeof payload !== 'object') return
+
+        const recipient = stmts.findUser.get(to)
+        if (!recipient) return
+
+        const recipientWS = connections.get(recipient.id)
+        if (recipientWS?.readyState === 1) {
+          recipientWS.send(JSON.stringify({ type: 'signal', from: username, payload }))
+        }
+        return
+      }
+
+      // ── Server-stored message (offline fallback) ──────────────────────────
       if (msg.type === 'message') {
         const { to, ciphertext, iv } = msg
 

@@ -313,6 +313,18 @@
     }
     .status.online { color: var(--online); }
 
+    .p2p-badge {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      color: var(--online);
+      border: 1px solid var(--online);
+      border-radius: 4px;
+      padding: 1px 6px;
+      opacity: .8;
+    }
+
     .messages {
       flex: 1;
       overflow-y: auto;
@@ -483,6 +495,7 @@
         <div class="avatar" id="chat-avatar"></div>
         <span id="chat-username"></span>
         <span id="chat-status" class="status"></span>
+        <span id="p2p-badge" class="p2p-badge" hidden title="P2P – messages bypass the server">P2P</span>
       </div>
       <div id="messages" class="messages"></div>
       <div class="input-area">
@@ -494,6 +507,7 @@
 </div>
 
 <script src="crypto.js"></script>
+<script src="peer.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

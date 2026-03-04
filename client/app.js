@@ -8,7 +8,12 @@
  * E2E key flow:
  *   register → generate keypair → store wrapped privkey locally → send pubkey to server
  *   login    → if local key: unwrap with password; else: generate new keypair & update server
- *   message  → encrypt with ECDH shared key → send ciphertext only → server stores ciphertext
+ *   message  → encrypt with ECDH shared key → P2P DataChannel if peer online,
+ *              otherwise server-stored ciphertext (offline fallback)
+ *
+ * Transport layers:
+ *   P2P path  : AES-256-GCM (our E2E) + DTLS (WebRTC mandatory) – server sees nothing
+ *   Server path: AES-256-GCM ciphertext stored at rest – server cannot decrypt
  */
 'use strict'
 
@@ -62,6 +67,12 @@ function showApp() {
   show('app')
   loadUsers()
   connectWS()
+  // Init P2P layer – callbacks wired after WS is available
+  Peer.init(
+    _onP2PMessage,
+    (to, payload) => S.ws?.readyState === 1 && S.ws.send(JSON.stringify({ type: 'signal', to, payload })),
+    _onPeerState,
+  )
 }
 
 // ── API helper ─────────────────────────────────────────────────────────────────
@@ -204,6 +215,7 @@ async function doUnlock() {
 }
 
 function doLogout() {
+  Peer.closeAll()
   if (S.ws) { S.ws.close(); S.ws = null }
   clearTimeout(S.wsTimer)
   localStorage.removeItem(LS_TOKEN)
@@ -283,6 +295,11 @@ async function openChat(username) {
   }
   renderMessages()
   $('msg-input').focus()
+
+  // Initiate P2P if peer is online and no channel open yet
+  if (S.onlineUsers.has(username) && !Peer.isOpen(username)) {
+    Peer.connect(username).catch(() => {/* fallback to server silently */})
+  }
 }
 
 async function loadHistory(username) {
@@ -367,11 +384,21 @@ async function sendMessage() {
 
   try {
     const { ciphertext, iv } = await encryptFor(text, S.currentChat)
-    if (S.ws?.readyState === 1) {
-      S.ws.send(JSON.stringify({ type: 'message', to: S.currentChat, ciphertext, iv }))
-    } else {
-      throw new Error('Not connected')
+    const peer = S.currentChat
+
+    // Optimistic local echo (shown immediately, no round-trip wait)
+    const localEntry = { id: null, from: S.username, text, createdAt: Math.floor(Date.now() / 1000) }
+    _pushMessage(peer, localEntry)
+
+    // Try P2P DataChannel first
+    const sentP2P = Peer.send(peer, { from: S.username, ciphertext, iv })
+
+    if (!sentP2P) {
+      // Fallback: server stores ciphertext (offline delivery)
+      if (S.ws?.readyState !== 1) throw new Error('Not connected')
+      S.ws.send(JSON.stringify({ type: 'message', to: peer, ciphertext, iv }))
     }
+    // Note: P2P path never stores on server – true serverless messaging
   } catch (e) {
     input.value = text   // restore on failure
     console.error('Send failed:', e.message)
@@ -433,14 +460,25 @@ async function handleWSMessage(msg) {
       S.onlineUsers = new Set(msg.users)
       renderUserList()
       if (S.currentChat) {
-        $('chat-status').textContent = S.onlineUsers.has(S.currentChat) ? '● online' : ''
-        $('chat-status').className   = 'status' + (S.onlineUsers.has(S.currentChat) ? ' online' : '')
+        const online = S.onlineUsers.has(S.currentChat)
+        $('chat-status').textContent = online ? '● online' : ''
+        $('chat-status').className   = 'status' + (online ? ' online' : '')
+        // Auto-connect P2P when peer comes online in current chat
+        if (online && !Peer.isOpen(S.currentChat)) {
+          Peer.connect(S.currentChat).catch(() => {})
+        }
       }
       break
     }
 
+    // ── Signaling relay (for WebRTC handshake only – no message content) ──
+    case 'signal': {
+      await Peer.handleSignal(msg.from, msg.payload)
+      break
+    }
+
+    // ── Server-stored message (offline fallback path) ─────────────────────
     case 'message': {
-      // Incoming message from someone else
       const text = await decryptFrom(msg.ciphertext, msg.iv, msg.from)
       const entry = { id: msg.id, from: msg.from, text, createdAt: msg.createdAt }
       _pushMessage(msg.from, entry)
@@ -448,10 +486,8 @@ async function handleWSMessage(msg) {
     }
 
     case 'sent': {
-      // Echo of our own sent message (confirmed stored)
-      const text = await decryptFrom(msg.ciphertext, msg.iv, msg.to)
-      const entry = { id: msg.id, from: S.username, text, createdAt: msg.createdAt }
-      _pushMessage(msg.to, entry)
+      // Server echo for offline-fallback messages (P2P path has local echo)
+      // Avoid duplicate: local echo was already pushed
       break
     }
 
@@ -460,6 +496,24 @@ async function handleWSMessage(msg) {
       console.warn('[ws]', msg.message)
       break
   }
+}
+
+// ── P2P callbacks (called by Peer module) ──────────────────────────────────────
+
+async function _onP2PMessage(env) {
+  // env = { from, ciphertext, iv } – decrypt and display
+  const text  = await decryptFrom(env.ciphertext, env.iv, env.from)
+  const entry = { id: null, from: env.from, text, createdAt: Math.floor(Date.now() / 1000) }
+  _pushMessage(env.from, entry)
+}
+
+function _onPeerState(username, peerState) {
+  // Update the P2P indicator in the chat header when viewing that user
+  if (S.currentChat !== username) return
+  const badge = $('p2p-badge')
+  if (!badge) return
+  badge.hidden  = peerState !== 'open'
+  badge.title   = peerState === 'open' ? 'P2P – messages bypass the server' : ''
 }
 
 function _pushMessage(peer, entry) {
