@@ -1,0 +1,14 @@
+# Cloudflare Worker config
+# Replace "msngr-your-name" in worker/index.js with your Fly.io app name.
+# Replace "your-domain.com" below with your actual domain.
+
+name = "msngr"
+main = "worker/index.js"
+compatibility_date = "2024-09-23"
+
+[assets]
+directory = "./client"
+
+routes = [
+  { pattern = "your-domain.com/*", zone_name = "your-domain.com" }
+]
