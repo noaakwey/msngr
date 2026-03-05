@@ -81,9 +81,16 @@ function updateTitle() {
   document.title = total > 0 ? `(${total}) msngr` : 'msngr'
 }
 
+function _pluralVotes(n) {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return `${n} голос`
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} голоса`
+  return `${n} голосов`
+}
+
 function _previewText(entry) {
   if (!entry) return ''
-  if (entry.msgType === 'file') return entry.file?.name ? `📎 ${entry.file.name}` : '📎 File'
+  if (entry.msgType === 'file') return entry.file?.name ? `📎 ${entry.file.name}` : '📎 Файл'
   return entry.text ?? ''
 }
 
@@ -148,7 +155,7 @@ async function decryptFrom(ciphertext, iv, username) {
   try {
     return await Crypto.decrypt(ciphertext, iv, await getSharedKey(username))
   } catch {
-    return '[⚠ could not decrypt]'
+    return '[⚠ не удалось расшифровать]'
   }
 }
 
@@ -182,7 +189,7 @@ async function doRegister() {
   const confirm  = $('reg-password2').value
   setErr('auth-error', null)
 
-  if (password !== confirm) return setErr('auth-error', 'Passwords do not match')
+  if (password !== confirm) return setErr('auth-error', 'Пароли не совпадают')
 
   disableBtn('btn-register')
   try {
@@ -236,14 +243,14 @@ async function doUnlock() {
   try {
     // Validate password by unwrapping the private key
     const stored = localStorage.getItem(LS_PRIVKEY(username))
-    if (!stored) throw new Error('No local key found – please log in again')
+    if (!stored) throw new Error('Ключ не найден — войдите заново')
     S.privateKey = await Crypto.unwrapPrivateKey(JSON.parse(stored), password)
     S.token      = localStorage.getItem(LS_TOKEN)
     S.username   = username
     sessionStorage.setItem(SS_PASS, password)
     showApp()
   } catch (e) {
-    setErr('unlock-error', 'Wrong password or key corrupted')
+    setErr('unlock-error', 'Неверный пароль или ключ повреждён')
   } finally {
     disableBtn('btn-unlock', false)
   }
@@ -299,7 +306,7 @@ async function openGroup(groupId) {
   $('chat-username').textContent = group.name
   $('chat-avatar').textContent   = group.name[0].toUpperCase()
   setAvatarColor($('chat-avatar'), group.name)
-  $('chat-status').textContent   = `${group.members?.length ?? '?'} members`
+  $('chat-status').textContent   = `${group.members?.length ?? '?'} участников`
   $('chat-status').className     = 'status'
   $('p2p-badge').hidden          = true
   $('btn-group-menu').hidden     = false
@@ -370,7 +377,7 @@ function renderGroupList() {
   if (btn) list.appendChild(btn)
 
   if (!S.groups.length) {
-    const p = el('p'); p.className = 'no-users'; p.textContent = 'No groups yet'
+    const p = el('p'); p.className = 'no-users'; p.textContent = 'Групп пока нет'
     list.appendChild(p)
     return
   }
@@ -418,12 +425,12 @@ function renderGroupMessages() {
 
   const frag = document.createDocumentFragment()
   if (!items.length) {
-    const p = el('p'); p.className = 'empty-chat'; p.textContent = 'No messages yet – say hello!'
+    const p = el('p'); p.className = 'empty-chat'; p.textContent = 'Сообщений нет — напишите первым!'
     frag.appendChild(p)
   } else {
     let lastDate = null
     for (const item of items) {
-      const dateStr = new Date(item.ts * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const dateStr = new Date(item.ts * 1000).toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' })
       if (dateStr !== lastDate) {
         lastDate = dateStr
         const sep = el('div'); sep.className = 'date-sep'; sep.textContent = dateStr
@@ -457,7 +464,7 @@ function showGroupModal() {
 
 async function doCreateGroup() {
   const name = $('gm-name').value.trim()
-  if (!name) { setErr('gm-error', 'Enter a group name'); return }
+  if (!name) { setErr('gm-error', 'Введите название группы'); return }
   const members = [...document.querySelectorAll('#gm-member-list input:checked')].map(cb => cb.value)
 
   disableBtn('btn-create-group')
@@ -490,7 +497,7 @@ function addPollOption() {
   const opts = $('poll-options')
   if (opts.children.length >= 8) return
   const row = el('div'); row.className = 'poll-opt-row'
-  const inp = el('input'); inp.type = 'text'; inp.placeholder = `Option ${opts.children.length + 1}`
+  const inp = el('input'); inp.type = 'text'; inp.placeholder = `Вариант ${opts.children.length + 1}`
   inp.maxLength = 100; inp.style.marginBottom = '0'
   const rm = el('button'); rm.type = 'button'; rm.className = 'icon-btn'; rm.textContent = '×'
   rm.style.cssText = 'width:36px;height:36px;flex-shrink:0'
@@ -504,8 +511,8 @@ async function doCreatePoll() {
   const options  = [...document.querySelectorAll('#poll-options input')].map(i => i.value.trim()).filter(Boolean)
   const multi    = $('poll-multi').checked
 
-  if (!question) { setErr('poll-error', 'Enter a question'); return }
-  if (options.length < 2) { setErr('poll-error', 'At least 2 options required'); return }
+  if (!question) { setErr('poll-error', 'Введите вопрос'); return }
+  if (options.length < 2) { setErr('poll-error', 'Нужно минимум 2 варианта'); return }
 
   disableBtn('btn-create-poll')
   setErr('poll-error', null)
@@ -575,7 +582,7 @@ function makePollCard(poll) {
   }
 
   const footer = el('div'); footer.className = 'poll-footer'
-  footer.textContent = `${totalVotes} vote${totalVotes !== 1 ? 's' : ''} · ${poll.multi ? 'multiple choice' : 'single choice'}`
+  footer.textContent = `${_pluralVotes(totalVotes)} · ${poll.multi ? 'несколько вариантов' : 'один вариант'}`
   card.appendChild(footer)
 
   return card
@@ -590,7 +597,7 @@ async function showGroupInfo() {
   const g = S.groups.find(x => x.id === gid)
   if (g) g.members = group.members
   // Update status text
-  $('chat-status').textContent = `${group.members.length} members`
+  $('chat-status').textContent = `${group.members.length} участников`
 
   const list = $('group-info-members')
   list.innerHTML = ''
@@ -614,7 +621,7 @@ async function showGroupInfo() {
       const rm = el('button'); rm.className = 'icon-btn'; rm.textContent = '×'
       rm.style.cssText = 'width:32px;height:32px;color:var(--error)'
       rm.addEventListener('click', async () => {
-        if (!confirm(`Remove ${m.username}?`)) return
+        if (!confirm(`Удалить ${m.username} из группы?`)) return
         try {
           await api('DELETE', `/groups/${gid}/members/${m.username}`)
           g.members = g.members.filter(x => x.username !== m.username)
@@ -636,7 +643,7 @@ function renderUserList() {
   if (!S.users.length) {
     const p = el('p')
     p.className = 'no-users'
-    p.textContent = 'No other users yet'
+    p.textContent = 'Других пользователей пока нет'
     list.appendChild(p)
     return
   }
@@ -773,13 +780,13 @@ function renderMessages() {
   if (!msgs.length) {
     const p = el('p')
     p.className = 'empty-chat'
-    p.textContent = 'No messages yet – say hello!'
+    p.textContent = 'Сообщений нет — напишите первым!'
     frag.appendChild(p)
   } else {
     let lastDate = null
     for (const msg of msgs) {
       const date = new Date(msg.createdAt * 1000)
-      const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const dateStr = date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' })
       if (dateStr !== lastDate) {
         lastDate = dateStr
         const sep = el('div')
@@ -819,7 +826,7 @@ function makeBubble(msg) {
   const time = el('div')
   time.className = 'msg-time'
   const timeStr = el('span')
-  timeStr.textContent = new Date(msg.createdAt * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  timeStr.textContent = new Date(msg.createdAt * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   time.appendChild(timeStr)
 
   if (isMine) {
@@ -853,10 +860,10 @@ function _makeFileCard(file) {
 
   if (file.url) {
     const dl = el('a'); dl.href = file.url; dl.download = file.name
-    dl.className = 'file-dl'; dl.textContent = '↓ Download'
+    dl.className = 'file-dl'; dl.textContent = '↓ Скачать'
     card.appendChild(dl)
   } else {
-    const lbl = el('span'); lbl.className = 'file-dl'; lbl.style.opacity = '.4'; lbl.textContent = 'Receiving…'
+    const lbl = el('span'); lbl.className = 'file-dl'; lbl.style.opacity = '.4'; lbl.textContent = 'Получение…'
     card.appendChild(lbl)
   }
   return card
@@ -935,7 +942,7 @@ async function _send1to1Message(text, file) {
       // Fallback: base64 encode and send via WS
       const ctB64 = btoa(String.fromCharCode(...new Uint8Array(encData)))
       const ivB64 = btoa(String.fromCharCode(...iv))
-      if (S.ws?.readyState !== 1) throw new Error('Not connected')
+      if (S.ws?.readyState !== 1) throw new Error('Нет подключения')
       S.ws.send(JSON.stringify({ type: 'message', to: peer, ciphertext: ctB64, iv: ivB64, msgType: 'file', meta }))
     }
   } else {
@@ -945,7 +952,7 @@ async function _send1to1Message(text, file) {
 
     const sentP2P = Peer.send(peer, { from: S.username, ciphertext, iv })
     if (!sentP2P) {
-      if (S.ws?.readyState !== 1) throw new Error('Not connected')
+      if (S.ws?.readyState !== 1) throw new Error('Нет подключения')
       S.ws.send(JSON.stringify({ type: 'message', to: peer, ciphertext, iv }))
     }
   }
@@ -965,14 +972,14 @@ async function _sendGroupMessage(text, file) {
     const localEntry = { id: null, from: S.username, msgType: 'file', file: { ...meta, url: URL.createObjectURL(blob) }, createdAt: now }
     _pushGroupMessage(gid, localEntry)
 
-    if (S.ws?.readyState !== 1) throw new Error('Not connected')
+    if (S.ws?.readyState !== 1) throw new Error('Нет подключения')
     S.ws.send(JSON.stringify({ type: 'group-message', groupId: gid, ciphertext: ctB64, iv: ivB64, msgType: 'file', meta }))
   } else {
     const { ciphertext, iv } = await GroupMgr.encryptMsg(text, gid, getSharedKey, api)
     const localEntry = { id: null, from: S.username, msgType: 'text', text, createdAt: now }
     _pushGroupMessage(gid, localEntry)
 
-    if (S.ws?.readyState !== 1) throw new Error('Not connected')
+    if (S.ws?.readyState !== 1) throw new Error('Нет подключения')
     S.ws.send(JSON.stringify({ type: 'group-message', groupId: gid, ciphertext, iv }))
   }
 }
@@ -998,7 +1005,7 @@ function clearPendingFile() {
   S.pendingFile = null
   const preview = $('file-preview'); if (preview) preview.hidden = true
   const thumb   = $('file-preview-thumb'); if (thumb) { thumb.hidden = true; thumb.src = '' }
-  $('msg-input').placeholder = 'Message…'
+  $('msg-input').placeholder = 'Сообщение…'
   $('file-input').value = ''
 }
 
@@ -1044,7 +1051,7 @@ function scheduleReconnect() {
 function updateConnStatus(online) {
   const el = $('conn-status')
   if (!el) return
-  el.textContent = online ? '' : '⚠ disconnected'
+  el.textContent = online ? '' : '⚠ нет связи'
   el.hidden = online
 }
 
@@ -1182,7 +1189,7 @@ function _onPeerState(username, peerState) {
   const badge = $('p2p-badge')
   if (!badge) return
   badge.hidden = peerState !== 'open'
-  badge.title  = peerState === 'open' ? 'P2P – messages bypass the server' : ''
+  badge.title  = peerState === 'open' ? 'P2P — сообщения минуют сервер' : ''
 }
 
 function _onFileStart(from, fileId, meta) {

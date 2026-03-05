@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Secure, lightweight E2E-encrypted messenger">
+  <meta name="description" content="Защищённый E2E-мессенджер с P2P-передачей">
   <title>msngr</title>
   <style>
     :root {
@@ -300,19 +300,19 @@
   <div class="auth-card">
     <h1>msngr</h1>
     <div class="tabs">
-      <button class="tab active" id="tab-login-btn">Sign in</button>
-      <button class="tab"        id="tab-reg-btn">Register</button>
+      <button class="tab active" id="tab-login-btn">Войти</button>
+      <button class="tab"        id="tab-reg-btn">Регистрация</button>
     </div>
     <div id="tab-login-form">
-      <input id="login-username" type="text"     placeholder="Username"  autocomplete="username"         spellcheck="false" autocorrect="off" autocapitalize="none">
-      <input id="login-password" type="password" placeholder="Password"  autocomplete="current-password">
-      <button class="primary" id="btn-login">Sign in</button>
+      <input id="login-username" type="text"     placeholder="Имя пользователя"  autocomplete="username"         spellcheck="false" autocorrect="off" autocapitalize="none">
+      <input id="login-password" type="password" placeholder="Пароль"            autocomplete="current-password">
+      <button class="primary" id="btn-login">Войти</button>
     </div>
     <div id="tab-reg-form" hidden>
-      <input id="reg-username"  type="text"     placeholder="Username (3–20 chars)" autocomplete="username"     spellcheck="false" autocorrect="off" autocapitalize="none">
-      <input id="reg-password"  type="password" placeholder="Password (min 8 chars)" autocomplete="new-password">
-      <input id="reg-password2" type="password" placeholder="Confirm password"        autocomplete="new-password">
-      <button class="primary" id="btn-register">Create account</button>
+      <input id="reg-username"  type="text"     placeholder="Имя пользователя (3–20 символов)" autocomplete="username"     spellcheck="false" autocorrect="off" autocapitalize="none">
+      <input id="reg-password"  type="password" placeholder="Пароль (минимум 8 символов)"       autocomplete="new-password">
+      <input id="reg-password2" type="password" placeholder="Подтвердите пароль"                 autocomplete="new-password">
+      <button class="primary" id="btn-register">Создать аккаунт</button>
     </div>
     <p id="auth-error" class="error" hidden></p>
   </div>
@@ -322,11 +322,11 @@
 <div id="unlock-screen" hidden>
   <div class="auth-card">
     <h1>msngr</h1>
-    <p class="unlock-hint">Enter your password to unlock</p>
+    <p class="unlock-hint">Введите пароль для разблокировки</p>
     <input id="unlock-username" type="text" readonly>
-    <input id="unlock-password" type="password" placeholder="Password" autocomplete="current-password">
-    <button class="primary" id="btn-unlock">Unlock</button>
-    <button class="link-btn"   id="btn-switch-user">Switch user</button>
+    <input id="unlock-password" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button class="primary" id="btn-unlock">Разблокировать</button>
+    <button class="link-btn"   id="btn-switch-user">Сменить пользователя</button>
     <p id="unlock-error" class="error" hidden></p>
   </div>
 </div>
@@ -340,7 +340,7 @@
       <span class="brand">msngr</span>
       <span id="my-username"></span>
       <span id="conn-status" hidden></span>
-      <button class="icon-btn" id="btn-logout" title="Logout">⏻</button>
+      <button class="icon-btn" id="btn-logout" title="Выйти">⏻</button>
     </div>
     <div class="sidebar-tabs">
       <button class="stab active" id="stab-chats">Chats</button>
@@ -356,7 +356,7 @@
 
   <!-- Chat panel -->
   <div class="chat">
-    <div id="chat-placeholder">← Select a conversation</div>
+    <div id="chat-placeholder">← Выберите чат</div>
 
     <div id="chat-area" hidden>
       <!-- Group info slide-over -->
@@ -369,15 +369,15 @@
       </div>
 
       <div class="chat-header">
-        <button class="icon-btn" id="btn-back" title="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="icon-btn" id="btn-back" title="Назад"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
         <div class="avatar" id="chat-avatar"></div>
         <div class="chat-title">
           <span id="chat-username"></span>
           <span id="chat-status" class="status"></span>
         </div>
-        <span id="p2p-badge" class="p2p-badge" hidden title="P2P – messages bypass the server">P2P</span>
-        <button class="icon-btn" id="btn-poll"       hidden title="Create poll"   style="font-size:20px">📊</button>
-        <button class="icon-btn" id="btn-group-menu" hidden title="Group members" style="font-size:20px">⋮</button>
+        <span id="p2p-badge" class="p2p-badge" hidden title="P2P — сообщения минуют сервер">P2P</span>
+        <button class="icon-btn" id="btn-poll"       hidden title="Создать опрос"    style="font-size:20px">📊</button>
+        <button class="icon-btn" id="btn-group-menu" hidden title="Участники группы" style="font-size:20px">⋮</button>
       </div>
 
       <div id="messages" class="messages"></div>
@@ -387,15 +387,15 @@
         <div id="file-preview" hidden>
           <img id="file-preview-thumb" hidden alt="">
           <span id="file-preview-name"></span>
-          <button id="btn-cancel-file" title="Remove file">×</button>
+          <button id="btn-cancel-file" title="Убрать файл">×</button>
         </div>
         <div class="input-row">
-          <label class="attach-btn" for="file-input" title="Attach file">📎</label>
+          <label class="attach-btn" for="file-input" title="Прикрепить файл">📎</label>
           <input id="file-input" type="file" hidden accept="*/*">
-          <input id="msg-input" type="text" placeholder="Message…"
+          <input id="msg-input" type="text" placeholder="Сообщение…"
                  autocomplete="off" autocorrect="off" autocapitalize="sentences"
                  inputmode="text" maxlength="4000">
-          <button id="btn-send" title="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+          <button id="btn-send" title="Отправить"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
         </div>
       </div>
     </div>
@@ -405,14 +405,14 @@
 <!-- ── Group creation modal ── -->
 <div id="group-modal" class="modal-overlay" hidden>
   <div class="modal-card">
-    <h2>New Group</h2>
-    <input id="gm-name" type="text" placeholder="Group name (1–50 chars)" maxlength="50" autocomplete="off">
-    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Members:</p>
+    <h2>Новая группа</h2>
+    <input id="gm-name" type="text" placeholder="Название группы (1–50 символов)" maxlength="50" autocomplete="off">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Участники:</p>
     <div id="gm-member-list" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     <p id="gm-error" class="error" hidden></p>
     <div class="modal-btns">
-      <button class="secondary" id="btn-cancel-group">Cancel</button>
-      <button class="primary"   id="btn-create-group" style="margin-top:0">Create</button>
+      <button class="secondary" id="btn-cancel-group">Отмена</button>
+      <button class="primary"   id="btn-create-group" style="margin-top:0">Создать</button>
     </div>
   </div>
 </div>
@@ -420,18 +420,18 @@
 <!-- ── Poll creation modal ── -->
 <div id="poll-modal" class="modal-overlay" hidden>
   <div class="modal-card">
-    <h2>Create Poll</h2>
-    <input id="poll-question" type="text" placeholder="Question (max 500 chars)" maxlength="500" autocomplete="off">
+    <h2>Создать опрос</h2>
+    <input id="poll-question" type="text" placeholder="Вопрос (макс. 500 символов)" maxlength="500" autocomplete="off">
     <div id="poll-options"></div>
-    <button class="modal-link" id="btn-add-poll-opt">＋ Add option</button>
+    <button class="modal-link" id="btn-add-poll-opt">＋ Добавить вариант</button>
     <div class="toggle-row">
       <input type="checkbox" id="poll-multi">
-      <label for="poll-multi">Allow multiple choices</label>
+      <label for="poll-multi">Несколько вариантов ответа</label>
     </div>
     <p id="poll-error" class="error" hidden></p>
     <div class="modal-btns">
-      <button class="secondary" id="btn-cancel-poll">Cancel</button>
-      <button class="primary"   id="btn-create-poll" style="margin-top:0">Create poll</button>
+      <button class="secondary" id="btn-cancel-poll">Отмена</button>
+      <button class="primary"   id="btn-create-poll" style="margin-top:0">Создать опрос</button>
     </div>
   </div>
 </div>
