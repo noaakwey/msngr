@@ -119,9 +119,13 @@
     .new-group-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; margin-bottom: 4px; background: none; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--accent); font-size: 13px; cursor: pointer; min-height: 44px; }
     .new-group-btn:active { background: var(--surface2); }
 
-    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: var(--accent); flex-shrink: 0; position: relative; user-select: none; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--av-color, var(--surface2)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #fff; flex-shrink: 0; position: relative; user-select: none; }
     .online-dot { position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; border-radius: 50%; background: var(--online); border: 2px solid var(--surface); }
     .user-name { font-size: 14px; font-weight: 500; }
+    .user-preview { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; margin-top: 1px; }
+    .user-item-info { flex: 1; min-width: 0; }
+    .user-item-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .badge { min-width: 18px; height: 18px; background: var(--accent); color: #0d1117; font-size: 11px; font-weight: 700; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; }
 
     /* ── Chat panel ── */
     .chat { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
@@ -153,7 +157,17 @@
     .bubble { padding: 8px 12px; line-height: 1.55; word-break: break-word; white-space: pre-wrap; font-size: 15px; }
     .sent .bubble { background: var(--sent-bg); border-radius: 18px 18px 4px 18px; }
     .recv .bubble { background: var(--recv-bg); border-radius: 18px 18px 18px 4px; }
-    .msg-time { font-size: 11px; color: var(--muted); margin-top: 3px; padding: 0 4px; }
+    .msg-time { font-size: 11px; color: var(--muted); margin-top: 3px; padding: 0 4px; display: flex; align-items: center; gap: 3px; }
+    .tick { color: var(--muted); font-size: 13px; line-height: 1; }
+    .tick.delivered { color: var(--accent); }
+
+    /* Typing indicator */
+    #typing-status { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 4px; min-height: 16px; padding: 0 4px; margin-bottom: 2px; }
+    .typing-dots { display: flex; gap: 3px; align-items: center; }
+    .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: tdot 1.2s infinite; opacity: .4; }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes tdot { 0%,80%,100%{opacity:.4;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
 
     /* File card */
     .file-card { display: flex; align-items: center; gap: 10px; padding: 4px 0; max-width: 260px; flex-wrap: wrap; }
@@ -348,14 +362,14 @@
       <!-- Group info slide-over -->
       <div id="group-info-panel" hidden>
         <div class="gi-header">
-          <button class="icon-btn" id="btn-close-group-info" style="color:var(--accent)">←</button>
+          <button class="icon-btn" id="btn-close-group-info" style="color:var(--accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <h3 id="group-info-name"></h3>
         </div>
         <div id="group-info-members" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
       </div>
 
       <div class="chat-header">
-        <button class="icon-btn" id="btn-back" title="Back">←</button>
+        <button class="icon-btn" id="btn-back" title="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
         <div class="avatar" id="chat-avatar"></div>
         <div class="chat-title">
           <span id="chat-username"></span>
@@ -367,6 +381,7 @@
       </div>
 
       <div id="messages" class="messages"></div>
+      <div id="typing-status" hidden></div>
 
       <div class="input-area">
         <div id="file-preview" hidden>
@@ -380,7 +395,7 @@
           <input id="msg-input" type="text" placeholder="Message…"
                  autocomplete="off" autocorrect="off" autocapitalize="sentences"
                  inputmode="text" maxlength="4000">
-          <button id="btn-send" title="Send">↑</button>
+          <button id="btn-send" title="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
         </div>
       </div>
     </div>

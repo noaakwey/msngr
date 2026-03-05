@@ -43,6 +43,21 @@ const S = {
   wsRetries:    0,
   wsTimer:      null,
   pendingFile:  null,   // {file, previewUrl} – file queued for sending
+  unread:       new Map(),  // key → count  (key = username or `g:${groupId}`)
+  lastMsg:      new Map(),  // key → preview string
+  typingTimers: new Map(),  // username → timer id
+}
+
+// ── Avatar color ───────────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#1565c0','#00695c','#ad1457','#6a1b9a','#e65100','#0277bd','#2e7d32','#f57f17','#4e342e','#37474f']
+function avatarColor(str) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
+}
+
+function setAvatarColor(el, name) {
+  el.style.setProperty('--av-color', avatarColor(name))
 }
 
 // ── DOM helpers ────────────────────────────────────────────────────────────────
@@ -59,6 +74,18 @@ function setErr(id, msg) {
 }
 
 function disableBtn(id, on = true) { $(id).disabled = on }
+
+function updateTitle() {
+  let total = 0
+  for (const v of S.unread.values()) total += v
+  document.title = total > 0 ? `(${total}) msngr` : 'msngr'
+}
+
+function _previewText(entry) {
+  if (!entry) return ''
+  if (entry.msgType === 'file') return entry.file?.name ? `📎 ${entry.file.name}` : '📎 File'
+  return entry.text ?? ''
+}
 
 // ── Screens ────────────────────────────────────────────────────────────────────
 function showAuth()   { hide('unlock-screen'); hide('app'); show('auth-screen') }
@@ -230,12 +257,16 @@ function doLogout() {
   sessionStorage.removeItem(SS_PASS)
   // Evict all cached group keys so they can't be read after logout
   for (const g of S.groups) GroupMgr.evict(g.id)
+  clearTimeout(_typingTimer); _typingActive = false
+  for (const t of S.typingTimers.values()) clearTimeout(t)
+  document.title = 'msngr'
   Object.assign(S, {
     username: null, token: null, privateKey: null,
     currentChat: null, currentGroup: null,
     sharedKeys: new Map(), theirPubKeys: new Map(),
     messages: new Map(), groups: [], groupMsgs: new Map(), groupPolls: new Map(),
     users: [], onlineUsers: new Set(), ws: null, pendingFile: null,
+    unread: new Map(), lastMsg: new Map(), typingTimers: new Map(),
   })
   showAuth()
 }
@@ -263,8 +294,11 @@ async function openGroup(groupId) {
   if (!group) return
 
   // Header
+  S.unread.delete(`g:${groupId}`)
+  updateTitle()
   $('chat-username').textContent = group.name
   $('chat-avatar').textContent   = group.name[0].toUpperCase()
+  setAvatarColor($('chat-avatar'), group.name)
   $('chat-status').textContent   = `${group.members?.length ?? '?'} members`
   $('chat-status').className     = 'status'
   $('p2p-badge').hidden          = true
@@ -300,6 +334,7 @@ async function loadGroupHistory(groupId) {
       createdAt: row.created_at,
     })))
     S.groupMsgs.set(groupId, msgs)
+    if (msgs.length) S.lastMsg.set(`g:${groupId}`, `${msgs[msgs.length-1].from}: ${_previewText(msgs[msgs.length-1])}`)
   } catch {
     S.groupMsgs.set(groupId, [])
   }
@@ -343,9 +378,27 @@ function renderGroupList() {
     const item = el('div')
     item.className = 'user-item' + (g.id === S.currentGroup ? ' active' : '')
     const av = el('div'); av.className = 'avatar'; av.textContent = g.name[0].toUpperCase()
-    av.style.background = '#2d3748'
+    setAvatarColor(av, g.name)
+
+    const info = el('div'); info.className = 'user-item-info'
+    const row  = el('div'); row.className  = 'user-item-row'
     const name = el('span'); name.className = 'user-name'; name.textContent = g.name
-    item.appendChild(av); item.appendChild(name)
+    row.appendChild(name)
+
+    const unreadCount = S.unread.get(`g:${g.id}`) ?? 0
+    if (unreadCount > 0) {
+      const badge = el('span'); badge.className = 'badge'; badge.textContent = unreadCount > 99 ? '99+' : unreadCount
+      row.appendChild(badge)
+    }
+    info.appendChild(row)
+
+    const preview = S.lastMsg.get(`g:${g.id}`)
+    if (preview) {
+      const prev = el('div'); prev.className = 'user-preview'; prev.textContent = preview
+      info.appendChild(prev)
+    }
+
+    item.appendChild(av); item.appendChild(info)
     item.addEventListener('click', () => openGroup(g.id))
     list.appendChild(item)
   }
@@ -595,6 +648,7 @@ function renderUserList() {
 
     const avatar = el('div')
     avatar.className = 'avatar'
+    setAvatarColor(avatar, u)
     avatar.textContent = u[0].toUpperCase()
     if (S.onlineUsers.has(u)) {
       const dot = el('div')
@@ -602,12 +656,26 @@ function renderUserList() {
       avatar.appendChild(dot)
     }
 
-    const name = el('span')
-    name.className = 'user-name'
-    name.textContent = u
+    const info = el('div'); info.className = 'user-item-info'
+    const row  = el('div'); row.className  = 'user-item-row'
+    const name = el('span'); name.className = 'user-name'; name.textContent = u
+    row.appendChild(name)
+
+    const unreadCount = S.unread.get(u) ?? 0
+    if (unreadCount > 0) {
+      const badge = el('span'); badge.className = 'badge'; badge.textContent = unreadCount > 99 ? '99+' : unreadCount
+      row.appendChild(badge)
+    }
+    info.appendChild(row)
+
+    const preview = S.lastMsg.get(u)
+    if (preview) {
+      const prev = el('div'); prev.className = 'user-preview'; prev.textContent = preview
+      info.appendChild(prev)
+    }
 
     item.appendChild(avatar)
-    item.appendChild(name)
+    item.appendChild(info)
     item.addEventListener('click', () => openChat(u))
     list.appendChild(item)
   }
@@ -626,6 +694,8 @@ function switchTab(tab) {
 async function openChat(username) {
   S.currentChat  = username
   S.currentGroup = null
+  S.unread.delete(username)
+  updateTitle()
   $('btn-group-menu').hidden = true
   $('btn-poll').hidden       = true
   renderUserList()
@@ -633,9 +703,15 @@ async function openChat(username) {
   // Update header
   $('chat-username').textContent = username
   $('chat-avatar').textContent   = username[0].toUpperCase()
+  setAvatarColor($('chat-avatar'), username)
   const online = S.onlineUsers.has(username)
   $('chat-status').textContent   = online ? '● online' : ''
   $('chat-status').className     = 'status' + (online ? ' online' : '')
+
+  // Reset typing UI when switching chat
+  const typingEl = $('typing-status')
+  if (typingEl) typingEl.hidden = true
+  _sendTyping(false)
 
   hide('chat-placeholder')
   const area = $('chat-area')
@@ -681,6 +757,7 @@ async function loadHistory(username) {
       }
     }))
     S.messages.set(username, decrypted)
+    if (decrypted.length) S.lastMsg.set(username, _previewText(decrypted[decrypted.length - 1]))
   } catch {
     S.messages.set(username, [])
   }
@@ -741,7 +818,14 @@ function makeBubble(msg) {
 
   const time = el('div')
   time.className = 'msg-time'
-  time.textContent = new Date(msg.createdAt * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const timeStr = el('span')
+  timeStr.textContent = new Date(msg.createdAt * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  time.appendChild(timeStr)
+
+  if (isMine) {
+    const tick = el('span'); tick.className = 'tick'; tick.textContent = '✓'
+    time.appendChild(tick)
+  }
 
   wrap.appendChild(bubble)
   wrap.appendChild(time)
@@ -1074,6 +1158,10 @@ async function handleWSMessage(msg) {
       break
     }
 
+    case 'typing':
+      _showTyping(msg.from, msg.isTyping)
+      break
+
     case 'error':
     case 'info':
       console.warn('[ws]', msg.message)
@@ -1138,10 +1226,18 @@ function _pushMessage(peer, entry) {
   if (!S.messages.has(peer)) S.messages.set(peer, [])
   S.messages.get(peer).push(entry)
 
+  // Update last message preview in sidebar
+  if (entry.from) S.lastMsg.set(peer, _previewText(entry))
+
   if (S.currentChat === peer) {
     $('messages').querySelector('.empty-chat')?.remove()
     $('messages').appendChild(makeBubble(entry))
     scrollBottom()
+  } else if (entry.from !== S.username) {
+    // Increment unread only for messages from others
+    S.unread.set(peer, (S.unread.get(peer) ?? 0) + 1)
+    updateTitle()
+    renderUserList()
   }
 }
 
@@ -1149,10 +1245,52 @@ function _pushGroupMessage(groupId, entry) {
   if (!S.groupMsgs.has(groupId)) S.groupMsgs.set(groupId, [])
   S.groupMsgs.get(groupId).push(entry)
 
+  const key = `g:${groupId}`
+  if (entry.from) S.lastMsg.set(key, `${entry.from}: ${_previewText(entry)}`)
+
   if (S.currentGroup === groupId) {
     $('messages').querySelector('.empty-chat')?.remove()
     $('messages').appendChild(makeBubble(entry))
     scrollBottom()
+  } else if (entry.from !== S.username) {
+    S.unread.set(key, (S.unread.get(key) ?? 0) + 1)
+    updateTitle()
+    renderGroupList()
+  }
+}
+
+// ── Typing indicator ───────────────────────────────────────────────────────────
+let _typingActive = false
+let _typingTimer  = null
+
+function _sendTyping(isTyping) {
+  if (!S.currentChat || !S.ws || S.ws.readyState !== 1) return
+  if (isTyping === _typingActive) return
+  _typingActive = isTyping
+  S.ws.send(JSON.stringify({ type: 'typing', to: S.currentChat, isTyping }))
+}
+
+function onMsgInputKey() {
+  if (!S.currentChat) return
+  _sendTyping(true)
+  clearTimeout(_typingTimer)
+  _typingTimer = setTimeout(() => _sendTyping(false), 3000)
+}
+
+function _showTyping(from, isTyping) {
+  if (S.currentChat !== from) return
+  const el = $('typing-status')
+  if (!el) return
+  // Clear any previous timer for this user
+  clearTimeout(S.typingTimers.get(from))
+  if (isTyping) {
+    el.innerHTML = `<span style="color:var(--muted)">${from}</span>&nbsp;<div class="typing-dots"><span></span><span></span><span></span></div>`
+    el.hidden = false
+    S.typingTimers.set(from, setTimeout(() => {
+      el.hidden = true
+    }, 4000))
+  } else {
+    el.hidden = true
   }
 }
 
@@ -1242,7 +1380,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-logout').addEventListener('click', doLogout)
   $('btn-send').addEventListener('click', sendMessage)
   $('msg-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendTyping(false); sendMessage() }
+    else onMsgInputKey()
   })
 
   // Sidebar tabs

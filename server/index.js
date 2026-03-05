@@ -492,6 +492,17 @@ app.register(async (scope) => {
         return
       }
 
+      // ── Typing indicator relay ────────────────────────────────────────────
+      if (msg.type === 'typing') {
+        const { to } = msg
+        if (!to || typeof to !== 'string') return
+        const recipient = stmts.findUser.get(to)
+        if (!recipient) return
+        const rws = connections.get(recipient.id)
+        if (rws?.readyState === 1) rws.send(JSON.stringify({ type: 'typing', from: username, isTyping: !!msg.isTyping }))
+        return
+      }
+
       // ── 1-1 message (offline fallback) ────────────────────────────────────
       if (msg.type === 'message') {
         const isFile = msg.msgType === 'file'
