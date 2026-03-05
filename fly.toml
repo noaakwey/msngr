@@ -1,5 +1,5 @@
 # Fly.io config — replace app name with something unique
-app = "msngr-your-name"
+app = "msngr-carbon-volga"
 primary_region = "ams"
 
 [env]

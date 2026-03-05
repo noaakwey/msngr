@@ -1,6 +1,6 @@
 // Cloudflare Worker: serves static assets and proxies /api/* + /ws to backend
 // Edit BACKEND to match your Fly.io app name before deploying.
-const BACKEND = 'https://msngr-ваше-имя.fly.dev'
+const BACKEND = 'https://msngr-carbon-volga.fly.dev'
 
 export default {
   async fetch(req, env) {

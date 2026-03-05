@@ -10,5 +10,5 @@ compatibility_date = "2024-09-23"
 directory = "./client"
 
 routes = [
-  { pattern = "your-domain.com/*", zone_name = "your-domain.com" }
+  { pattern = "carbon-volga.ru/*", zone_name = "carbon-volga.ru" }
 ]
