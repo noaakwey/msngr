@@ -99,6 +99,9 @@ function showAuth()   { hide('unlock-screen'); hide('app'); show('auth-screen') 
 function showUnlock(username) {
   $('unlock-username').value = username
   hide('auth-screen'); hide('app'); show('unlock-screen')
+  // Show biometric button if stored for this user
+  const bioBtnEl = $('btn-bio-unlock')
+  if (bioBtnEl) bioBtnEl.hidden = !Bio.stored(username)
 }
 function showApp() {
   hide('auth-screen'); hide('unlock-screen')
@@ -228,6 +231,7 @@ async function doLogin() {
     const { token } = await api('POST', '/login', { username, password })
     await setupSession(username, token, password)
     showApp()
+    _afterAuthBioCheck(username, password)
   } catch (e) {
     setErr('auth-error', e.message)
   } finally {
@@ -249,6 +253,7 @@ async function doUnlock() {
     S.username   = username
     sessionStorage.setItem(SS_PASS, password)
     showApp()
+    _afterAuthBioCheck(username, password)
   } catch (e) {
     setErr('unlock-error', 'Неверный пароль или ключ повреждён')
   } finally {
@@ -712,7 +717,7 @@ async function openChat(username) {
   $('chat-avatar').textContent   = username[0].toUpperCase()
   setAvatarColor($('chat-avatar'), username)
   const online = S.onlineUsers.has(username)
-  $('chat-status').textContent   = online ? '● online' : ''
+  $('chat-status').textContent   = online ? '● в сети' : ''
   $('chat-status').className     = 'status' + (online ? ' online' : '')
 
   // Reset typing UI when switching chat
@@ -1068,7 +1073,7 @@ async function handleWSMessage(msg) {
       renderUserList()
       if (S.currentChat) {
         const online = S.onlineUsers.has(S.currentChat)
-        $('chat-status').textContent = online ? '● online' : ''
+        $('chat-status').textContent = online ? '● в сети' : ''
         $('chat-status').className   = 'status' + (online ? ' online' : '')
         if (online && !Peer.isOpen(S.currentChat)) Peer.connect(S.currentChat).catch(() => {})
       }
@@ -1301,6 +1306,26 @@ function _showTyping(from, isTyping) {
   }
 }
 
+// ── Biometric helpers ──────────────────────────────────────────────────────────
+async function _afterAuthBioCheck(username, password) {
+  // After successful password auth: offer one-time biometric setup
+  if (Bio.stored(username)) return           // already configured
+  if (sessionStorage.getItem('msngr:bio-skip')) return  // user said "Позже" this session
+  if (!(await Bio.available())) return       // platform doesn't support it
+  show('bio-prompt')
+}
+
+async function doBioSetup() {
+  hide('bio-prompt')
+  try {
+    await Bio.setup(S.username, sessionStorage.getItem(SS_PASS) ?? '')
+    // Success: next unlock will show the biometric button
+  } catch (e) {
+    // Non-critical: just log, don't bother the user
+    console.warn('[bio]', e.message)
+  }
+}
+
 // ── visualViewport: keep input above soft keyboard on iOS/Android ──────────────
 function setupViewport() {
   if (!window.visualViewport) return
@@ -1381,6 +1406,31 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem(LS_TOKEN)
     sessionStorage.removeItem(SS_PASS)
     showAuth()
+  })
+
+  // Biometric unlock button
+  $('btn-bio-unlock').addEventListener('click', async () => {
+    const username = $('unlock-username').value
+    setErr('unlock-error', null)
+    try {
+      const password = await Bio.unlock(username)
+      const stored = localStorage.getItem(LS_PRIVKEY(username))
+      if (!stored) throw new Error('Ключ не найден — войдите заново')
+      S.privateKey = await Crypto.unwrapPrivateKey(JSON.parse(stored), password)
+      S.token      = localStorage.getItem(LS_TOKEN)
+      S.username   = username
+      sessionStorage.setItem(SS_PASS, password)
+      showApp()
+    } catch (e) {
+      setErr('unlock-error', e.message)
+    }
+  })
+
+  // Biometric setup prompt
+  $('btn-bio-yes').addEventListener('click', doBioSetup)
+  $('btn-bio-no').addEventListener('click', () => {
+    sessionStorage.setItem('msngr:bio-skip', '1')
+    hide('bio-prompt')
   })
 
   // App

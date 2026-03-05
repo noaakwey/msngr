@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -84,6 +84,16 @@
     .tab.active { background: var(--surface2); color: var(--text); }
     .unlock-hint { color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 18px; }
     .link-btn { display: block; width: 100%; margin-top: 12px; background: none; border: none; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; text-align: center; padding: 8px; min-height: 44px; }
+
+    /* Biometric */
+    .bio-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; margin-top: 8px; background: none; border: 1.5px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px; transition: background .15s; }
+    .bio-btn:active { background: rgba(88,166,255,.1); }
+    .bio-btn svg { flex-shrink: 0; }
+    #bio-prompt { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(88,166,255,.08); border-top: 1px solid var(--border); font-size: 13px; }
+    #bio-prompt span { flex: 1; color: var(--text); }
+    #bio-prompt button { background: none; border: none; font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; min-height: 32px; }
+    #btn-bio-yes { color: var(--accent); font-weight: 600; }
+    #btn-bio-no  { color: var(--muted); }
 
     /* ── App layout ── */
     #app { display: flex; height: 100%; position: relative; overflow: hidden; }
@@ -326,6 +336,10 @@
     <input id="unlock-username" type="text" readonly>
     <input id="unlock-password" type="password" placeholder="Пароль" autocomplete="current-password">
     <button class="primary" id="btn-unlock">Разблокировать</button>
+    <button class="bio-btn" id="btn-bio-unlock" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2"/><path d="M8 8V6a4 4 0 0 1 4-4"/><path d="M3 12h1m16 0h1M12 21v1M4.2 4.2l.7.7m14.9-.7-.7.7"/><circle cx="12" cy="14" r="3"/><path d="M12 11v-1"/></svg>
+      Войти по биометрии
+    </button>
     <button class="link-btn"   id="btn-switch-user">Сменить пользователя</button>
     <p id="unlock-error" class="error" hidden></p>
   </div>
@@ -342,15 +356,20 @@
       <span id="conn-status" hidden></span>
       <button class="icon-btn" id="btn-logout" title="Выйти">⏻</button>
     </div>
+    <div id="bio-prompt" hidden>
+      <span>Настроить вход по биометрии?</span>
+      <button id="btn-bio-yes">Да</button>
+      <button id="btn-bio-no">Позже</button>
+    </div>
     <div class="sidebar-tabs">
-      <button class="stab active" id="stab-chats">Chats</button>
-      <button class="stab"        id="stab-groups">Groups</button>
+      <button class="stab active" id="stab-chats">Чаты</button>
+      <button class="stab"        id="stab-groups">Группы</button>
     </div>
     <!-- Direct message list -->
     <div id="user-list" class="user-list"></div>
     <!-- Group list -->
     <div id="group-list" class="user-list" hidden>
-      <button class="new-group-btn" id="btn-new-group">＋ New group</button>
+      <button class="new-group-btn" id="btn-new-group">＋ Новая группа</button>
     </div>
   </div>
 
@@ -439,6 +458,7 @@
 <script src="crypto.js"></script>
 <script src="peer.js"></script>
 <script src="group.js"></script>
+<script src="biometric.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
